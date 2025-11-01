@@ -1,0 +1,14 @@
+# Python Backend Requirements
+# For deployment to Railway, Render, or other Python hosting
+
+# Core dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# Database & AI
+anthropic==0.72.0
+psycopg2-binary==2.9.11
+
+# Optional but recommended
+python-dotenv==1.0.0
