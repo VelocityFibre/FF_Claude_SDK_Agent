@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-FastAPI Backend for Neon Database AI Agent
+FastAPI Backend for Dual Database AI Agent (Neon + Convex)
 
-This wraps neon_agent.py and provides a REST API for the Next.js frontend.
+Supports both Neon PostgreSQL and Convex databases with switching capability.
 
 Deploy to: Railway, Render, or any Python hosting platform
 
@@ -13,16 +13,16 @@ Usage:
 from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Literal
 import os
 import sys
 import logging
 from datetime import datetime
 
-# Add parent directory to path to import neon_agent
+# Add parent directory to path to import dual_agent
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from neon_agent import NeonAgent, load_env
+from dual_agent import DualDatabaseAgent, load_env
 
 # Configure logging
 logging.basicConfig(
@@ -36,9 +36,9 @@ load_env()
 
 # Initialize FastAPI
 app = FastAPI(
-    title="Neon Database AI Agent API",
-    description="Natural language interface to your Neon PostgreSQL database",
-    version="1.0.0"
+    title="FibreFlow Dual Database AI Agent API",
+    description="Natural language interface to Neon PostgreSQL and Convex databases with comparison mode",
+    version="2.0.0"
 )
 
 # Configure CORS
@@ -59,12 +59,12 @@ API_KEY = os.getenv("AGENT_API_KEY")
 # Initialize agent (singleton pattern for performance)
 agent = None
 
-def get_agent() -> NeonAgent:
-    """Get or create agent instance."""
+def get_agent() -> DualDatabaseAgent:
+    """Get or create dual database agent instance."""
     global agent
     if agent is None:
-        logger.info("Initializing Neon Agent...")
-        agent = NeonAgent()
+        logger.info("Initializing Dual Database Agent...")
+        agent = DualDatabaseAgent()
         logger.info("Agent initialized successfully")
     return agent
 
@@ -73,6 +73,7 @@ def get_agent() -> NeonAgent:
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=5000, description="User's question")
     context: Optional[Dict[str, Any]] = Field(default={}, description="Optional page context")
+    database: Optional[Literal["neon", "convex"]] = Field(default=None, description="Which database to query (neon or convex)")
 
     class Config:
         json_schema_extra = {
@@ -81,7 +82,8 @@ class ChatRequest(BaseModel):
                 "context": {
                     "page": "dashboard",
                     "userId": "user123"
-                }
+                },
+                "database": "neon"
             }
         }
 
@@ -95,8 +97,10 @@ class ChatResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
-    database: str
+    neon_database: str
+    convex_database: str
     agent: str
+    active_database: str
     timestamp: str
 
 
@@ -125,11 +129,12 @@ async def verify_api_key(authorization: Optional[str] = Header(None)):
 async def root():
     """API root - basic info."""
     return {
-        "service": "Neon Database AI Agent",
-        "version": "1.0.0",
+        "service": "FibreFlow Dual Database AI Agent",
+        "version": "2.0.0",
         "status": "running",
+        "databases": ["neon", "convex"],
         "endpoints": {
-            "chat": "/agent/chat (POST)",
+            "chat": "/agent/chat (POST) - add 'database' field to select neon or convex",
             "health": "/health (GET)",
             "docs": "/docs"
         }
@@ -140,19 +145,18 @@ async def root():
 async def health_check():
     """
     Health check endpoint.
-    Verifies database connection and agent status.
+    Verifies database connections and agent status.
     """
     try:
         # Try to get agent (will initialize if needed)
         agent_instance = get_agent()
 
-        # Quick database connectivity test
-        # You could add a simple query here if needed
-
         return HealthResponse(
             status="healthy",
-            database="connected",
+            neon_database="connected" if agent_instance.neon_db else "not configured",
+            convex_database="connected" if agent_instance.convex_db else "not configured",
             agent="ready",
+            active_database=agent_instance.active_db,
             timestamp=datetime.utcnow().isoformat()
         )
     except Exception as e:
@@ -211,11 +215,14 @@ async def chat(
             if context_hints:
                 enhanced_message = " ".join(context_hints) + " " + request.message
 
+        # Determine which database to use
+        database = request.database or agent_instance.active_db
+
         # Log request
-        logger.info(f"Query: {request.message[:100]}... | Context: {request.context.get('page', 'none')}")
+        logger.info(f"Query: {request.message[:100]}... | Database: {database} | Context: {request.context.get('page', 'none')}")
 
         # Get response from agent
-        response_text = agent_instance.chat(enhanced_message)
+        response_text = agent_instance.chat(enhanced_message, database=database)
 
         # Calculate duration
         duration = (datetime.utcnow() - start_time).total_seconds()
@@ -284,7 +291,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.on_event("startup")
 async def startup_event():
     """Initialize agent on startup."""
-    logger.info("Starting Neon Agent API...")
+    logger.info("Starting Dual Database Agent API...")
     try:
         get_agent()  # Initialize agent
         logger.info("Startup complete - API ready")
@@ -299,7 +306,7 @@ async def shutdown_event():
     global agent
     logger.info("Shutting down...")
     if agent:
-        agent.db.close()
+        agent.close()
     logger.info("Shutdown complete")
 
 

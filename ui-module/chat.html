@@ -179,6 +179,80 @@
             30% { transform: translateY(-10px); }
         }
 
+        .database-selector {
+            padding: 12px 20px;
+            background: white;
+            border-bottom: 2px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .database-selector label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .database-selector select {
+            padding: 8px 32px 8px 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            outline: none;
+        }
+
+        .database-selector select:hover {
+            border-color: #667eea;
+        }
+
+        .database-selector select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .compare-mode {
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .compare-mode.active {
+            display: grid;
+        }
+
+        .compare-column {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .compare-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px 8px 0 0;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .compare-content {
+            flex: 1;
+            padding: 12px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
         .suggestions {
             padding: 0 20px 12px;
             background: #f7fafc;
@@ -393,6 +467,16 @@
             <span id="queryCount">0 queries</span>
         </div>
 
+        <!-- Database Selector -->
+        <div class="database-selector">
+            <label for="databaseSelect">Database:</label>
+            <select id="databaseSelect">
+                <option value="neon">Neon PostgreSQL</option>
+                <option value="convex">Convex</option>
+                <option value="compare">Compare Both</option>
+            </select>
+        </div>
+
         <!-- Chat Messages -->
         <div class="chat-messages" id="chatMessages">
             <div class="empty-state">
@@ -450,11 +534,18 @@
     <script>
         const API_URL = window.location.origin + '/agent/chat';
         let queryCount = 0;
+        let currentDatabase = 'neon';
 
         // Configure marked for better formatting
         marked.setOptions({
             breaks: true,
             gfm: true
+        });
+
+        // Handle database selection change
+        document.getElementById('databaseSelect').addEventListener('change', function(e) {
+            currentDatabase = e.target.value;
+            console.log('Switched to database:', currentDatabase);
         });
 
         function sendSuggestion(message) {
@@ -497,26 +588,16 @@
             sendButton.textContent = 'Thinking...';
 
             try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ message })
-                });
-
-                const data = await response.json();
-
-                // Hide typing indicator
-                typingIndicator.classList.remove('active');
-
-                if (data.success) {
-                    addMessage('assistant', data.response);
-                    queryCount++;
-                    updateQueryCount();
+                if (currentDatabase === 'compare') {
+                    // Compare mode: query both databases
+                    await compareMode(message);
                 } else {
-                    addMessage('error', data.error || 'An error occurred');
+                    // Single database mode
+                    await singleMode(message, currentDatabase);
                 }
+
+                queryCount++;
+                updateQueryCount();
 
             } catch (error) {
                 typingIndicator.classList.remove('active');
@@ -526,7 +607,100 @@
                 // Re-enable send button
                 sendButton.disabled = false;
                 sendButton.textContent = 'Send';
+
+                // Hide typing indicator
+                typingIndicator.classList.remove('active');
             }
+        }
+
+        async function singleMode(message, database) {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message, database })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                addMessage('assistant', data.response);
+            } else {
+                addMessage('error', data.error || 'An error occurred');
+            }
+        }
+
+        async function compareMode(message) {
+            // Create compare container
+            const messagesContainer = document.getElementById('chatMessages');
+            const compareDiv = document.createElement('div');
+            compareDiv.className = 'message assistant';
+
+            compareDiv.innerHTML = `
+                <div class="message-content" style="max-width: 90%;">
+                    <div class="compare-mode active">
+                        <div class="compare-column">
+                            <div class="compare-header">🗄️ Neon PostgreSQL</div>
+                            <div class="compare-content" id="neonResult">
+                                <div class="typing-indicator active" style="display: flex;">
+                                    <div class="typing-dot"></div>
+                                    <div class="typing-dot"></div>
+                                    <div class="typing-dot"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="compare-column">
+                            <div class="compare-header">⚡ Convex</div>
+                            <div class="compare-content" id="convexResult">
+                                <div class="typing-indicator active" style="display: flex;">
+                                    <div class="typing-dot"></div>
+                                    <div class="typing-dot"></div>
+                                    <div class="typing-dot"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timestamp">${new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'})}</div>
+                </div>
+            `;
+
+            const typingIndicator = document.getElementById('typingIndicator');
+            messagesContainer.insertBefore(compareDiv, typingIndicator);
+            scrollToBottom();
+
+            // Query both databases in parallel
+            const [neonResponse, convexResponse] = await Promise.all([
+                fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, database: 'neon' })
+                }).then(r => r.json()),
+
+                fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message, database: 'convex' })
+                }).then(r => r.json())
+            ]);
+
+            // Update results
+            const neonResult = document.getElementById('neonResult');
+            const convexResult = document.getElementById('convexResult');
+
+            if (neonResponse.success) {
+                neonResult.innerHTML = marked.parse(neonResponse.response);
+            } else {
+                neonResult.innerHTML = `<div style="color: #9b2c2c;">Error: ${neonResponse.error || 'Query failed'}</div>`;
+            }
+
+            if (convexResponse.success) {
+                convexResult.innerHTML = marked.parse(convexResponse.response);
+            } else {
+                convexResult.innerHTML = `<div style="color: #9b2c2c;">Error: ${convexResponse.error || 'Query failed'}</div>`;
+            }
+
+            scrollToBottom();
         }
 
         function addMessage(type, content) {
@@ -585,8 +759,10 @@
                 const data = await response.json();
 
                 if (data.status === 'healthy') {
+                    const neonStatus = data.neon_database === 'connected' ? '✓' : '✗';
+                    const convexStatus = data.convex_database === 'connected' ? '✓' : '✗';
                     document.getElementById('statusText').textContent =
-                        `Connected • ${data.database}`;
+                        `Neon ${neonStatus} • Convex ${convexStatus} • Active: ${data.active_database}`;
                 } else {
                     document.getElementById('statusText').textContent =
                         'Connection issues';

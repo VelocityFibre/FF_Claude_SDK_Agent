@@ -9,6 +9,7 @@ pydantic==2.5.0
 # Database & AI
 anthropic==0.72.0
 psycopg2-binary==2.9.11
+requests==2.31.0
 
 # Optional but recommended
 python-dotenv==1.0.0
