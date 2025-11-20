@@ -1,0 +1,16 @@
+# Superior Agent Brain - Additional Requirements
+# Install with: pip install -r requirements_superior_brain.txt
+
+# Vector Database (Episodic/Semantic Memory)
+qdrant-client>=1.7.0
+
+# Numerical Computing (for embeddings)
+numpy>=1.24.0
+
+# Already installed (included for completeness)
+psycopg2-binary>=2.9.9
+anthropic>=0.18.0
+
+# Optional: Better embeddings
+# voyageai>=0.2.0  # Uncomment if using Voyage AI
+# openai>=1.0.0    # Uncomment if using OpenAI embeddings

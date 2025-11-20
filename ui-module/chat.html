@@ -253,6 +253,76 @@
             max-height: 400px;
         }
 
+        /* Activity Log Styles */
+        .activity-log {
+            margin-top: 8px;
+            padding: 8px;
+            background: #f8f9fa;
+            border-left: 3px solid #667eea;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .activity-log-toggle {
+            cursor: pointer;
+            color: #667eea;
+            font-weight: 600;
+            margin-bottom: 8px;
+            user-select: none;
+        }
+
+        .activity-log-toggle:hover {
+            text-decoration: underline;
+        }
+
+        .activity-log-content {
+            display: none;
+            margin-top: 8px;
+        }
+
+        .activity-log-content.show {
+            display: block;
+        }
+
+        .tool-call {
+            background: white;
+            padding: 8px;
+            margin-bottom: 6px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .tool-call-header {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+
+        .tool-call-detail {
+            color: #64748b;
+            margin: 2px 0;
+        }
+
+        .tool-call-badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-neon {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-convex {
+            background: #fce7f3;
+            color: #9f1239;
+        }
+
         .suggestions {
             padding: 0 20px 12px;
             background: #f7fafc;
@@ -625,7 +695,7 @@
             const data = await response.json();
 
             if (data.success) {
-                addMessage('assistant', data.response);
+                addMessage('assistant', data.response, data.tool_calls, data.database_used);
             } else {
                 addMessage('error', data.error || 'An error occurred');
             }
@@ -703,7 +773,7 @@
             scrollToBottom();
         }
 
-        function addMessage(type, content) {
+        function addMessage(type, content, toolCalls = null, databaseUsed = null) {
             const messagesContainer = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
@@ -728,9 +798,36 @@
                     .replace(/'/g, '&#039;');
             }
 
+            // Build activity log if tool calls exist
+            let activityLogHtml = '';
+            if (toolCalls && toolCalls.length > 0) {
+                const logId = 'log-' + Date.now();
+                activityLogHtml = `
+                    <div class="activity-log">
+                        <div class="activity-log-toggle" onclick="toggleLog('${logId}')">
+                            🔍 Activity Log (${toolCalls.length} tool${toolCalls.length > 1 ? 's' : ''}) - Click to expand
+                        </div>
+                        <div class="activity-log-content" id="${logId}">
+                            ${toolCalls.map((call, idx) => `
+                                <div class="tool-call">
+                                    <div class="tool-call-header">
+                                        ${idx + 1}. ${call.tool}
+                                        <span class="tool-call-badge badge-${call.database}">${call.database}</span>
+                                    </div>
+                                    ${call.input && Object.keys(call.input).length > 0 ?
+                                        `<div class="tool-call-detail">📥 Input: ${JSON.stringify(call.input)}</div>` : ''}
+                                    <div class="tool-call-detail">📤 Result: ${call.result_preview.substring(0, 150)}${call.result_preview.length > 150 ? '...' : ''}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
             messageDiv.innerHTML = `
                 <div class="message-content">
                     ${formattedContent}
+                    ${activityLogHtml}
                     <div class="timestamp">${timeString}</div>
                 </div>
             `;
@@ -740,6 +837,11 @@
             messagesContainer.insertBefore(messageDiv, typingIndicator);
 
             scrollToBottom();
+        }
+
+        function toggleLog(logId) {
+            const logContent = document.getElementById(logId);
+            logContent.classList.toggle('show');
         }
 
         function scrollToBottom() {

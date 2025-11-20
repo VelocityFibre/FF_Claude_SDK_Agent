@@ -211,8 +211,8 @@ class DualDatabaseAgent:
         """Define tools for Convex database."""
         return [
             {
-                "name": "convex_list_contractors",
-                "description": "List all contractors from Convex database.",
+                "name": "convex_list_tasks",
+                "description": "List all tasks from Convex database.",
                 "input_schema": {
                     "type": "object",
                     "properties": {},
@@ -229,17 +229,12 @@ class DualDatabaseAgent:
                 }
             },
             {
-                "name": "convex_search",
-                "description": "Search Convex database by keyword.",
+                "name": "convex_get_sync_stats",
+                "description": "Get synchronization statistics between Neon and Convex.",
                 "input_schema": {
                     "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Search query"
-                        }
-                    },
-                    "required": ["query"]
+                    "properties": {},
+                    "required": []
                 }
             }
         ]
@@ -281,11 +276,11 @@ class DualDatabaseAgent:
     def execute_convex_tool(self, tool_name: str, tool_input: Dict[str, Any]) -> str:
         """Execute Convex database tool."""
         try:
-            # Map tool names to Convex functions
+            # Map tool names to Convex functions (matching deployed schema)
             function_map = {
-                "convex_list_contractors": "contractors/list",
-                "convex_list_projects": "projects/list",
-                "convex_search": "search/query"
+                "convex_list_tasks": "contractors:list",
+                "convex_list_projects": "projects:list",
+                "convex_get_sync_stats": "contractors:count"
             }
 
             if tool_name not in function_map:
@@ -299,7 +294,7 @@ class DualDatabaseAgent:
         except Exception as e:
             return json.dumps({"error": str(e), "tool": tool_name})
 
-    def chat(self, user_message: str, database: Optional[Literal["neon", "convex"]] = None) -> str:
+    def chat(self, user_message: str, database: Optional[Literal["neon", "convex"]] = None, return_logs: bool = False):
         """
         Chat with the agent. Can optionally specify which database to use.
 
@@ -312,6 +307,9 @@ class DualDatabaseAgent:
         """
         # Determine which database to use
         db_to_use = database if database else self.active_db
+
+        # Track tool calls for logging
+        tool_call_log = []
 
         # Select appropriate tools
         if db_to_use == "neon":
@@ -373,6 +371,14 @@ Current database: CONVEX"""
                     else:
                         result = self.execute_convex_tool(tool_use.name, tool_use.input)
 
+                    # Log tool call
+                    tool_call_log.append({
+                        "tool": tool_use.name,
+                        "database": db_to_use,
+                        "input": tool_use.input,
+                        "result_preview": result[:200] if len(result) > 200 else result
+                    })
+
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": tool_use.id,
@@ -389,7 +395,15 @@ Current database: CONVEX"""
 
             # Extract text response
             text_blocks = [block.text for block in response.content if hasattr(block, 'text')]
-            return "\n".join(text_blocks)
+            final_response = "\n".join(text_blocks)
+
+            if return_logs:
+                return {
+                    "response": final_response,
+                    "tool_calls": tool_call_log,
+                    "database": db_to_use
+                }
+            return final_response
 
     def reset_conversation(self):
         """Clear conversation history."""

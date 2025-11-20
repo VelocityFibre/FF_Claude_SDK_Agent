@@ -93,6 +93,8 @@ class ChatResponse(BaseModel):
     success: bool = Field(default=True, description="Whether request succeeded")
     timestamp: str = Field(..., description="Response timestamp")
     query_length: int = Field(..., description="Length of user query")
+    tool_calls: Optional[list] = Field(default=None, description="Tool calls made during query")
+    database_used: Optional[str] = Field(default=None, description="Database queried")
 
 
 class HealthResponse(BaseModel):
@@ -221,18 +223,30 @@ async def chat(
         # Log request
         logger.info(f"Query: {request.message[:100]}... | Database: {database} | Context: {request.context.get('page', 'none')}")
 
-        # Get response from agent
-        response_text = agent_instance.chat(enhanced_message, database=database)
+        # Get response from agent with logging
+        agent_response = agent_instance.chat(enhanced_message, database=database, return_logs=True)
+
+        # Handle response (dict if return_logs=True, string otherwise)
+        if isinstance(agent_response, dict):
+            response_text = agent_response["response"]
+            tool_calls = agent_response.get("tool_calls", [])
+            database_used = agent_response.get("database", database)
+        else:
+            response_text = agent_response
+            tool_calls = []
+            database_used = database
 
         # Calculate duration
         duration = (datetime.utcnow() - start_time).total_seconds()
-        logger.info(f"Response generated in {duration:.2f}s | Length: {len(response_text)} chars")
+        logger.info(f"Response generated in {duration:.2f}s | Length: {len(response_text)} chars | Tools: {len(tool_calls)}")
 
         return ChatResponse(
             response=response_text,
             success=True,
             timestamp=datetime.utcnow().isoformat(),
-            query_length=len(request.message)
+            query_length=len(request.message),
+            tool_calls=tool_calls,
+            database_used=database_used
         )
 
     except Exception as e:

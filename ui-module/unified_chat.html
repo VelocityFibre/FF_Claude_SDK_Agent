@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FibreFlow Unified Agent - Convex Database</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 900px;
+            height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+        }
+
+        .header h1 {
+            font-size: 26px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            font-size: 15px;
+            opacity: 0.95;
+        }
+
+        .status {
+            background: #f7fafc;
+            padding: 14px 24px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #48bb78;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            background: #f9fafb;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-user {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .message-assistant {
+            display: flex;
+            justify-content: flex-start;
+        }
+
+        .message-content {
+            max-width: 75%;
+            padding: 14px 18px;
+            border-radius: 14px;
+            word-wrap: break-word;
+            line-height: 1.6;
+        }
+
+        .message-user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-assistant .message-content {
+            background: white;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .input-container {
+            padding: 20px 24px;
+            background: white;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-field {
+            flex: 1;
+            padding: 14px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .send-button {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-button:active {
+            transform: translateY(0);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 18px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            width: fit-content;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        }
+
+        .typing-indicator.active {
+            display: flex;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+
+        .examples {
+            padding: 12px 24px;
+            background: #eef2ff;
+            border-top: 1px solid #e2e8f0;
+            font-size: 13px;
+        }
+
+        .examples strong {
+            color: #667eea;
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .examples span {
+            display: inline-block;
+            color: #4a5568;
+            margin-right: 16px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+
+        .examples span:hover {
+            color: #667eea;
+        }
+
+        .reset-button {
+            padding: 6px 12px;
+            background: #e2e8f0;
+            color: #4a5568;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .reset-button:hover {
+            background: #cbd5e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💬 Unified Convex Agent</h1>
+            <p>One agent, all your FibreFlow data - contractors, projects, tasks & more!</p>
+        </div>
+
+        <div class="status">
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span><strong>Connected:</strong> Convex Database (17 tools)</span>
+            </div>
+            <button class="reset-button" onclick="resetConversation()">🔄 Reset</button>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <div class="message message-assistant">
+                <div class="message-content">
+                    <strong>👋 Welcome to the Unified Convex Agent!</strong>
+                    <p style="margin-top: 10px;">I'm ONE agent with access to ALL your Convex data:</p>
+                    <ul style="margin: 12px 0 0 20px; line-height: 2;">
+                        <li><strong>9 Contractors</strong> - List, search, stats</li>
+                        <li><strong>2 Projects</strong> (Lawley, Mohadin) - Full details</li>
+                        <li><strong>Tasks</strong> - Create, manage, track</li>
+                        <li><strong>Sync Operations</strong> - Status & stats</li>
+                    </ul>
+                    <p style="margin-top: 12px; color: #667eea;">Ask me anything!</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="examples">
+            <strong>💡 Try these queries:</strong>
+            <span onclick="askQuestion('Show me all contractors')">📋 All contractors</span>
+            <span onclick="askQuestion('How many contractors do we have?')">🔢 Count contractors</span>
+            <span onclick="askQuestion('List all projects')">📁 Projects</span>
+            <span onclick="askQuestion('Show task statistics')">📊 Task stats</span>
+            <span onclick="askQuestion('Get sync status')">🔄 Sync status</span>
+        </div>
+
+        <div class="input-container">
+            <div class="input-wrapper">
+                <input
+                    type="text"
+                    class="input-field"
+                    id="user-input"
+                    placeholder="Ask about contractors, projects, tasks..."
+                    onkeypress="handleKeyPress(event)"
+                    autofocus
+                />
+                <button class="send-button" id="send-button" onclick="sendMessage()">
+                    Send
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+
+        function addMessage(content, isUser) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message message-${isUser ? 'user' : 'assistant'}`;
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.style.whiteSpace = 'pre-wrap';
+            contentDiv.textContent = content;
+
+            messageDiv.appendChild(contentDiv);
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showTyping() {
+            const messagesContainer = document.getElementById('chat-messages');
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typing-indicator';
+            typingDiv.className = 'message message-assistant';
+
+            const indicator = document.createElement('div');
+            indicator.className = 'typing-indicator active';
+            indicator.innerHTML = '<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>';
+
+            typingDiv.appendChild(indicator);
+            messagesContainer.appendChild(typingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTyping() {
+            const typing = document.getElementById('typing-indicator');
+            if (typing) typing.remove();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const button = document.getElementById('send-button');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            input.disabled = true;
+            button.disabled = true;
+
+            addMessage(message, true);
+            input.value = '';
+            showTyping();
+
+            try {
+                const response = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+
+                hideTyping();
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                addMessage(data.response, false);
+
+            } catch (error) {
+                hideTyping();
+                addMessage(`❌ Error: ${error.message}\n\nMake sure the API is running:\ncd ui-module && ../venv/bin/python3 unified_agent_api.py`, false);
+            } finally {
+                input.disabled = false;
+                button.disabled = false;
+                input.focus();
+            }
+        }
+
+        async function resetConversation() {
+            try {
+                await fetch(`${API_URL}/reset`, { method: 'POST' });
+                document.getElementById('chat-messages').innerHTML = `
+                    <div class="message message-assistant">
+                        <div class="message-content">
+                            <strong>✅ Conversation reset!</strong>
+                            <p style="margin-top: 8px;">Ready for new queries.</p>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Reset failed:', error);
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') sendMessage();
+        }
+
+        function askQuestion(question) {
+            document.getElementById('user-input').value = question;
+            sendMessage();
+        }
+    </script>
+</body>
+</html>

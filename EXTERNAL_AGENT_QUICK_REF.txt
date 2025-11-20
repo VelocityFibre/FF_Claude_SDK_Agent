@@ -1,0 +1,245 @@
+================================================================================
+EXTERNAL AGENT QUICK REFERENCE - Superior Agent Brain System
+================================================================================
+Version: 2.0 | Updated: 2025-11-19
+================================================================================
+
+SYSTEM LOCATION
+================================================================================
+Base Directory:     /home/louisdup/Agents/claude
+Git Repository:     main branch
+Status:             Active & Operational
+
+ESSENTIAL DOCUMENTATION
+================================================================================
+External Access:    /home/louisdup/Agents/claude/docs/EXTERNAL_AGENT_ACCESS_GUIDE.md
+Master Index:       /home/louisdup/Agents/claude/docs/MASTER_INDEX.md
+Architecture:       /home/louisdup/Agents/claude/docs/COMPLETE_BRAIN_ARCHITECTURE.md
+Quick Summary:      /home/louisdup/Agents/claude/docs/COMPLETE_FRAMEWORK_SUMMARY.md
+
+MAIN ENTRY POINT
+================================================================================
+File:               /home/louisdup/Agents/claude/superior_agent_brain.py
+Class:              SuperiorAgentBrain
+
+Usage:
+    import sys
+    sys.path.insert(0, '/home/louisdup/Agents/claude')
+    from superior_agent_brain import SuperiorAgentBrain
+
+    brain = SuperiorAgentBrain()
+    response = brain.chat("Your query", user_id="agent_id")
+    brain.close()
+
+API ACCESS
+================================================================================
+HTTP:               http://localhost:8000
+WebSocket:          ws://localhost:8000/ws/chat
+
+Endpoints:
+    POST /chat              - Main chat endpoint
+    GET  /status            - System status
+    POST /save_session      - Save session
+    GET  /agents            - List agents
+
+MEMORY SYSTEMS
+================================================================================
+Vector Memory:      /home/louisdup/Agents/claude/memory/vector_memory.py
+Persistent Memory:  /home/louisdup/Agents/claude/memory/persistent_memory.py
+Meta-Learner:       /home/louisdup/Agents/claude/memory/meta_learner.py
+Knowledge Graph:    /home/louisdup/Agents/claude/memory/knowledge_graph.py
+Consolidation:      /home/louisdup/Agents/claude/memory/consolidation.py
+
+DATABASES
+================================================================================
+Qdrant:             http://localhost:6333 (Vector database)
+Neon:               ${NEON_DATABASE_URL} (PostgreSQL)
+Convex:             ${CONVEX_URL} (Real-time database)
+
+CONFIGURATION
+================================================================================
+Environment:        /home/louisdup/Agents/claude/.env
+
+Required Variables:
+    ANTHROPIC_API_KEY       - Claude LLM access
+    NEON_DATABASE_URL       - PostgreSQL connection
+    CONVEX_URL              - Convex deployment
+
+Optional Variables:
+    QDRANT_URL              - Qdrant server (default: http://localhost:6333)
+    QDRANT_API_KEY          - Qdrant Cloud access
+
+QUICK INTEGRATION EXAMPLE
+================================================================================
+import sys
+sys.path.insert(0, '/home/louisdup/Agents/claude')
+
+# Import brain
+from superior_agent_brain import SuperiorAgentBrain
+
+# Initialize
+brain = SuperiorAgentBrain(
+    enable_vector_memory=True,
+    enable_persistent_memory=True,
+    enable_meta_learning=True,
+    enable_knowledge_graph=True,
+    enable_orchestration=True
+)
+
+# Query
+result = brain.process_query(
+    query="What contractors are in the system?",
+    user_id="external_agent_1",
+    use_memory=True
+)
+
+# Result contains:
+# - result['response'] : The answer
+# - result['metadata']['selected_agent'] : Which agent handled it
+# - result['metadata']['execution_time_seconds'] : How long it took
+# - result['metadata']['similar_experiences_found'] : Past similar queries
+
+# Cleanup
+brain.close()
+
+HTTP API EXAMPLE
+================================================================================
+import requests
+
+response = requests.post('http://localhost:8000/chat', json={
+    "message": "Your query here",
+    "user_id": "external_agent_1",
+    "use_memory": True,
+    "use_documents": True
+})
+
+data = response.json()
+print(data['response'])
+print(data['metadata'])
+print(data.get('sources', []))
+
+CAPABILITIES
+================================================================================
+✓ Natural language query
+✓ Memory recall (episodic/semantic)
+✓ Document search (RAG)
+✓ Task routing to specialists
+✓ Performance learning
+✓ Knowledge sharing
+✓ Cross-session persistence
+✓ Source citations
+
+SPECIALIZED AGENTS
+================================================================================
+Neon Agent:         /home/louisdup/Agents/claude/neon_agent.py
+Convex Agent:       /home/louisdup/Agents/claude/convex_agent.py
+Universal Convex:   /home/louisdup/Agents/claude/universal_convex_agent.py
+Dual DB Agent:      /home/louisdup/Agents/claude/ui-module/dual_agent.py
+Orchestrator:       /home/louisdup/Agents/claude/orchestrator/orchestrator.py
+
+SYSTEM STATUS CHECK
+================================================================================
+from superior_agent_brain import SuperiorAgentBrain
+
+brain = SuperiorAgentBrain()
+status = brain.get_brain_status()
+
+print(f"Session: {status['session_id']}")
+print(f"Components: {status['components']}")
+print(f"Agents: {status.get('agent_stats', {}).get('total_agents', 0)}")
+
+brain.close()
+
+DATA EXCHANGE FORMAT
+================================================================================
+Request:
+{
+  "message": "Query text",
+  "user_id": "agent_id",
+  "use_memory": true,
+  "use_documents": true
+}
+
+Response:
+{
+  "response": "Answer text",
+  "metadata": {
+    "execution_time_seconds": 1.23,
+    "selected_agent": "neon-agent",
+    "similar_experiences_found": 2
+  },
+  "sources": [...],
+  "similar_queries": [...]
+}
+
+KNOWLEDGE CONTRIBUTION
+================================================================================
+from memory.knowledge_graph import KnowledgeGraph
+
+kg = KnowledgeGraph()
+kg.learn_from_success(
+    problem_description="Problem description",
+    solution_description="Solution that worked",
+    agent_id="your_agent_id",
+    confidence=0.95
+)
+
+PERFORMANCE REPORTING
+================================================================================
+from memory.meta_learner import MetaLearner
+
+learner = MetaLearner()
+learner.track_outcome(
+    agent_id="your_agent_id",
+    task_type="task_category",
+    query="What you did",
+    success=True,
+    execution_time_ms=250
+)
+
+IMPORT SHORTCUTS
+================================================================================
+# Core
+from superior_agent_brain import SuperiorAgentBrain
+
+# Memory
+from memory import (
+    VectorMemory,
+    PersistentMemory,
+    MetaLearner,
+    KnowledgeGraph,
+    MemoryConsolidation
+)
+
+# Orchestration
+from orchestrator.orchestrator import AgentOrchestrator
+
+# Agents
+from neon_agent import NeonAgent
+from convex_agent import ConvexAgent
+
+TROUBLESHOOTING
+================================================================================
+Issue: Import errors
+Fix: Ensure path added: sys.path.insert(0, '/home/louisdup/Agents/claude')
+
+Issue: API not responding
+Fix: Check if running: curl http://localhost:8000/status
+
+Issue: Database connection failed
+Fix: Check .env file for NEON_DATABASE_URL
+
+Issue: Qdrant not found
+Fix: Start Qdrant: docker run -d -p 6333:6333 qdrant/qdrant
+
+SUPPORT
+================================================================================
+Full Documentation:     /home/louisdup/Agents/claude/docs/
+External Agent Guide:   /home/louisdup/Agents/claude/docs/EXTERNAL_AGENT_ACCESS_GUIDE.md
+Master Index:           /home/louisdup/Agents/claude/docs/MASTER_INDEX.md
+
+================================================================================
+END OF QUICK REFERENCE
+================================================================================
+For full details, see: /home/louisdup/Agents/claude/docs/EXTERNAL_AGENT_ACCESS_GUIDE.md
+================================================================================
