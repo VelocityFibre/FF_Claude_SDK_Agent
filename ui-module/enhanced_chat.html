@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superior Agent Brain - Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            height: 90vh;
+            max-height: 800px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+
+        .status {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .chat-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #f5f5f5;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message.assistant {
+            align-items: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            word-wrap: break-word;
+            line-height: 1.5;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            border: 1px solid #e0e0e0;
+            color: #333;
+        }
+
+        .message-metadata {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+            padding: 0 5px;
+        }
+
+        .sources {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f9ff;
+            border-left: 3px solid #3b82f6;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+
+        .sources-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #1e40af;
+        }
+
+        .source-item {
+            margin: 3px 0;
+            padding-left: 10px;
+            color: #475569;
+        }
+
+        .similar-queries {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff7ed;
+            border-left: 3px solid #f97316;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+
+        .similar-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #c2410c;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            flex-wrap: wrap;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            cursor: pointer;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        #messageInput {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        #messageInput:focus {
+            border-color: #667eea;
+        }
+
+        #sendButton {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        #sendButton:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        #sendButton:active {
+            transform: translateY(0);
+        }
+
+        #sendButton:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: inline-flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #667eea;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loading-dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .error-message {
+            background: #fee2e2;
+            border-left: 3px solid #ef4444;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            color: #991b1b;
+            font-size: 12px;
+        }
+
+        /* Scrollbar styling */
+        .chat-area::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-area::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .chat-area::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .chat-area::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Superior Agent Brain</h1>
+            <div class="status">
+                <span class="status-dot"></span>
+                <span id="statusText">Initializing...</span>
+            </div>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div class="message assistant">
+                <div class="message-content">
+                    Hello! I'm the Superior Agent Brain. I can remember our conversations, search documents, and learn from our interactions. How can I help you today?
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <div class="controls">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useMemory" checked>
+                    <span>🧠 Use Memory</span>
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useDocs" checked>
+                    <span>📄 Search Documents</span>
+                </label>
+            </div>
+            <div class="input-row">
+                <input
+                    type="text"
+                    id="messageInput"
+                    placeholder="Ask me anything..."
+                    autocomplete="off"
+                >
+                <button id="sendButton" onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        let userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        let conversationHistory = [];
+
+        // Check status on load
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_URL}/status`);
+                if (!response.ok) throw new Error('API not responding');
+
+                const status = await response.json();
+
+                const features = status.features || status.components || {};
+                const memoryStatus = features.vector_memory ? '✓' : '✗';
+                const docsStatus = features.document_rag ? '✓' : '✗';
+
+                document.getElementById('statusText').textContent =
+                    `Ready | Memory: ${memoryStatus} | Docs: ${docsStatus} | Session: ${(status.session_id || 'unknown').substring(0, 8)}`;
+
+            } catch (e) {
+                console.error('Status check failed:', e);
+                document.getElementById('statusText').textContent =
+                    'API connection issues - some features may be limited';
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            const useMemory = document.getElementById('useMemory').checked;
+            const useDocs = document.getElementById('useDocs').checked;
+            const sendButton = document.getElementById('sendButton');
+
+            // Clear input and disable button
+            input.value = '';
+            sendButton.disabled = true;
+
+            // Add user message to UI
+            addMessage('user', message);
+
+            // Show loading
+            const loadingId = addMessage('assistant', '<div class="loading"><span class="loading-dot"></span><span class="loading-dot"></span><span class="loading-dot"></span></div>');
+
+            try {
+                // Send to API
+                const response = await fetch(`${API_URL}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        user_id: userId,
+                        use_memory: useMemory,
+                        use_documents: useDocs
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'API request failed');
+                }
+
+                const data = await response.json();
+
+                // Remove loading
+                document.getElementById(loadingId)?.remove();
+
+                // Add response
+                addMessage('assistant', data.response, {
+                    metadata: data.metadata,
+                    sources: data.sources,
+                    similar_queries: data.similar_queries
+                });
+
+            } catch (e) {
+                console.error('Send failed:', e);
+                document.getElementById(loadingId)?.remove();
+
+                let errorMsg = 'Sorry, I encountered an error: ' + e.message;
+
+                if (e.message.includes('API usage limits')) {
+                    errorMsg = 'API usage limit reached. The system will be available again on 2025-12-01. You can still view past conversations.';
+                }
+
+                addMessage('assistant', errorMsg, { error: true });
+            } finally {
+                sendButton.disabled = false;
+                input.focus();
+            }
+        }
+
+        function addMessage(role, content, extras = {}) {
+            const chatArea = document.getElementById('chatArea');
+            const messageId = 'msg_' + Date.now();
+
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            messageDiv.id = messageId;
+
+            let html = `<div class="message-content">${content}</div>`;
+
+            // Add error styling
+            if (extras.error) {
+                html = `<div class="message-content error-message">${content}</div>`;
+            }
+
+            // Add metadata
+            if (extras.metadata) {
+                const meta = extras.metadata;
+                html += `<div class="message-metadata">`;
+                if (meta.selected_agent) {
+                    html += `Agent: ${meta.selected_agent} | `;
+                }
+                if (meta.execution_time_seconds) {
+                    html += `Time: ${meta.execution_time_seconds.toFixed(2)}s`;
+                }
+                if (meta.similar_experiences_found > 0) {
+                    html += ` | Similar: ${meta.similar_experiences_found}`;
+                }
+                html += `</div>`;
+            }
+
+            // Add sources
+            if (extras.sources && extras.sources.length > 0) {
+                html += `<div class="sources">
+                    <div class="sources-title">📄 Sources:</div>`;
+                extras.sources.forEach(src => {
+                    html += `<div class="source-item">• ${src.title} (${(src.relevance * 100).toFixed(0)}%)</div>`;
+                });
+                html += `</div>`;
+            }
+
+            // Add similar queries
+            if (extras.similar_queries && extras.similar_queries.length > 0) {
+                html += `<div class="similar-queries">
+                    <div class="similar-title">💡 Similar past queries:</div>`;
+                extras.similar_queries.forEach(q => {
+                    html += `<div class="source-item">• "${q.query}" (${(q.similarity * 100).toFixed(0)}%)</div>`;
+                });
+                html += `</div>`;
+            }
+
+            messageDiv.innerHTML = html;
+            chatArea.appendChild(messageDiv);
+
+            // Scroll to bottom
+            chatArea.scrollTop = chatArea.scrollHeight;
+
+            return messageId;
+        }
+
+        // Enter to send
+        document.getElementById('messageInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Check status on load and periodically
+        checkStatus();
+        setInterval(checkStatus, 30000); // Update every 30s
+
+        // Focus input on load
+        window.addEventListener('load', () => {
+            document.getElementById('messageInput').focus();
+        });
+    </script>
+</body>
+</html>

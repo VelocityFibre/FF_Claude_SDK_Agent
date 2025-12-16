@@ -1,0 +1,27 @@
+[Unit]
+Description=FibreFlow Proactive Worker - Autonomous Code Maintenance
+After=network.target
+
+[Service]
+Type=simple
+User=louisdup
+Group=louisdup
+WorkingDirectory=/home/louisdup/Agents/claude
+Environment="PATH=/home/louisdup/Agents/claude/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+EnvironmentFile=/home/louisdup/Agents/claude/.env
+ExecStart=/home/louisdup/Agents/claude/venv/bin/python3 /home/louisdup/Agents/claude/workers/proactive_worker.py --interval 60 --max-fixes 5
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Resource limits
+LimitNOFILE=4096
+Nice=10
+
+# Logging
+StandardOutput=append:/home/louisdup/Agents/claude/logs/proactive_worker.log
+StandardError=append:/home/louisdup/Agents/claude/logs/proactive_worker_error.log
+
+[Install]
+WantedBy=multi-user.target

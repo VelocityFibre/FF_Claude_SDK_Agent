@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./venv/bin/python:*)",
+      "Bash(ssh:*)",
+      "Bash(tree:*)",
+      "Bash(cat:*)",
+      "Bash(npm install)",
+      "Bash(npx convex dev:*)",
+      "Bash(npx convex deploy:*)",
+      "Bash(npx convex env set:*)",
+      "Bash(curl -s \"https://quixotic-crow-802.convex.cloud/api/query\" -H \"Content-Type: application/json\" -d '{\"\"\"\"path\"\"\"\":\"\"\"\"_system:listTables\"\"\"\",\"\"\"\"args\"\"\"\":{}}')",
+      "Bash(grep:*)",
+      "Bash(chmod:*)",
+      "Bash(curl -s \"https://quixotic-crow-802.convex.cloud/api/query\" -H \"Content-Type: application/json\" -d '{\"\"\"\"path\"\"\"\":\"\"\"\"contractors:count\"\"\"\",\"\"\"\"args\"\"\"\":{}}')",
+      "Bash(python3:*)",
+      "Read(//tmp/**)",
+      "Bash(curl -s -X POST http://localhost:8000/chat -H \"Content-Type: application/json\" -d '{\"\"\"\"message\"\"\"\":\"\"\"\"List all contractors with their names and phone numbers\"\"\"\"}')",
+      "Bash(pkill:*)",
+      "Bash(curl -s -X POST http://localhost:8000/chat -H \"Content-Type: application/json\" -d '{\"\"\"\"message\"\"\"\":\"\"\"\"List all contractors\"\"\"\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/chat -H \"Content-Type: application/json\" -d '{\"\"\"\"message\"\"\"\":\"\"\"\"Show me the names and phone numbers of all contractors\"\"\"\"}')",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(find:*)",
+      "Bash(awk:*)",
+      "Bash(./venv/bin/pytest tests/test_vps_monitor.py -v)",
+      "Bash(./venv/bin/pytest tests/test_orchestrator.py -v)",
+      "Bash(./venv/bin/pytest tests/ -v --tb=short)",
+      "Bash(sshpass:*)",
+      "Read(//etc/**)",
+      "Bash(nginx:*)",
+      "Bash(for dir in .claude/commands/*/)",
+      "Bash(done)",
+      "WebSearch"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "outputStyle": "Explanatory"
+}

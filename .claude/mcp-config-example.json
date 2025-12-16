@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7"],
+      "description": "Up-to-date documentation for Python, FastAPI, PostgreSQL, pytest"
+    },
+    "playwright-mcp": {
+      "command": "npx",
+      "args": ["-y", "@executeautomation/playwright-mcp-server"],
+      "description": "Browser automation and UI testing"
+    },
+    "postgres-mcp": {
+      "command": "npx",
+      "args": ["-y", "postgres-mcp-pro"],
+      "env": {
+        "DATABASE_URI": "${NEON_DATABASE_URL}"
+      },
+      "description": "PostgreSQL database access (use read-only credentials)",
+      "disabled": true,
+      "note": "Enable only after creating read-only database user"
+    },
+    "python-repl": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-python"],
+      "description": "Execute Python code in isolated environment",
+      "disabled": true
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "${GITHUB_TOKEN}"
+      },
+      "description": "GitHub repository management",
+      "disabled": true,
+      "note": "Requires GITHUB_TOKEN in .env"
+    }
+  }
+}
