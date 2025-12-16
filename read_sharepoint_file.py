@@ -6,13 +6,18 @@ Uses Microsoft Graph API with existing credentials
 
 import requests
 import json
+import os
+from dotenv import load_dotenv
 
-# Your existing SharePoint credentials
-TENANT_ID = "***TENANT_ID_REMOVED***"
-CLIENT_ID = "***CLIENT_ID_REMOVED***"
-CLIENT_SECRET = "***REMOVED***"
-SITE_URL = "https://blitzfibre.sharepoint.com/sites/Velocity_Manco"
-FILE_URL = "https://blitzfibre.sharepoint.com/:x:/s/Velocity_Manco/EYm7g0w6Y1dFgGB_m4YlBxgBeVJpoDXAYjdvK-ZfgHoOqA?e=PaRb5T"
+# Load environment variables
+load_dotenv()
+
+# SharePoint credentials from environment
+TENANT_ID = os.getenv('SHAREPOINT_TENANT_ID')
+CLIENT_ID = os.getenv('SHAREPOINT_CLIENT_ID')
+CLIENT_SECRET = os.getenv('SHAREPOINT_CLIENT_SECRET')
+SITE_URL = os.getenv('SHAREPOINT_SITE_URL', 'https://blitzfibre.sharepoint.com/sites/Velocity_Manco')
+FILE_URL = os.getenv('SHAREPOINT_FILE_URL', 'https://blitzfibre.sharepoint.com/:x:/s/Velocity_Manco/EYm7g0w6Y1dFgGB_m4YlBxgBeVJpoDXAYjdvK-ZfgHoOqA?e=PaRb5T')
 
 def get_access_token():
     """Get Microsoft Graph API access token"""

@@ -11,11 +11,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# SharePoint credentials
-TENANT_ID = "***TENANT_ID_REMOVED***"
-CLIENT_ID = "***CLIENT_ID_REMOVED***"
-CLIENT_SECRET = "***REMOVED***"
-SITE_PATH = "/sites/Velocity_Manco"
+# SharePoint credentials from environment
+TENANT_ID = os.getenv('SHAREPOINT_TENANT_ID')
+CLIENT_ID = os.getenv('SHAREPOINT_CLIENT_ID')
+CLIENT_SECRET = os.getenv('SHAREPOINT_CLIENT_SECRET')
+SITE_PATH = os.getenv('SHAREPOINT_SITE_PATH', '/sites/Velocity_Manco')
 
 # The specific file we want
 FILE_NAME = "VF_Project_Tracker_Mohadin.xlsx"
