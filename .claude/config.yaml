@@ -1,0 +1,199 @@
+# Claude Code Configuration
+# Unified configuration for Claude-specific settings and preferences
+
+version: "2.0.0"
+project_name: "FibreFlow Agent Workforce"
+architecture: "skills-based"  # Primary architecture (skills-based or agent-based)
+
+# Model Configuration
+models:
+  default: "claude-3-5-haiku-20241022"
+  production: "claude-3-5-sonnet-20241022"
+  harness:
+    initializer: "claude-3-5-sonnet-20241022"  # Better planning
+    coding_agent: "claude-3-5-haiku-20241022"   # Fast iterations
+
+  # Cost optimization settings
+  cost_thresholds:
+    simple_query: "haiku"      # <$0.001 per query
+    complex_query: "sonnet"     # <$0.020 per query
+    analysis: "sonnet"          # Better reasoning
+    code_generation: "haiku"    # Fast and cheap
+
+# Skills Configuration
+skills:
+  primary_path: ".claude/skills"
+  auto_discovery: true
+  performance_targets:
+    max_response_time_ms: 100
+    max_context_tokens: 1000
+    target_success_rate: 0.95
+
+  # Skill versioning
+  versioning:
+    enabled: true
+    format: "semver"  # 1.0.0
+    auto_increment: "patch"  # Increment patch on changes
+
+# Agent Configuration
+agents:
+  legacy_path: "agents"
+  production_agents:
+    - "neon-database"
+    - "convex-database"
+    - "vps-monitor"
+
+  # Sub-agents for Claude Code
+  sub_agents:
+    path: ".claude/agents"
+    enabled:
+      - "code-reviewer"
+      - "test-generator"
+      - "doc-writer"
+      - "deployment-checker"
+
+# Orchestrator Settings
+orchestrator:
+  registry_path: "orchestrator/registry.json"
+  routing_strategy: "keyword"  # keyword, semantic, or hybrid
+  fallback_agent: "neon-database"
+  timeout_seconds: 30
+
+  # Performance monitoring
+  metrics:
+    track_response_times: true
+    track_token_usage: true
+    log_level: "INFO"
+
+# Harness Configuration
+harness:
+  max_features_per_agent: 100
+  session_timeout_minutes: 30
+  auto_commit: true
+  test_on_completion: true
+
+  patterns:
+    base_agent_class: "shared.base_agent.BaseAgent"
+    test_markers: ["unit", "integration", "agent_name"]
+    required_methods:
+      - "define_tools()"
+      - "execute_tool()"
+      - "get_system_prompt()"
+
+# Database Configuration
+databases:
+  neon:
+    connection_pooling: true
+    pool_size: 5
+    max_overflow: 10
+    pool_timeout: 30
+
+  convex:
+    api_timeout: 10
+    retry_count: 3
+    cache_enabled: true
+
+# Performance Settings
+performance:
+  # Connection pooling (99% improvement demonstrated)
+  use_connection_pooling: true
+
+  # Context optimization
+  progressive_disclosure: true  # Load skills on-demand
+  context_caching: true
+  cache_ttl_seconds: 900  # 15 minutes
+
+  # Parallel execution
+  max_parallel_tools: 5
+  batch_tool_calls: true
+
+# Development Settings
+development:
+  debug_mode: false
+  verbose_logging: false
+  show_token_usage: true
+  enable_profiling: false
+
+  # Testing
+  auto_test_on_save: false
+  coverage_threshold: 80
+
+# Security Settings
+security:
+  mask_credentials_in_logs: true
+  allowed_file_operations:
+    - ".claude/**"
+    - "agents/**"
+    - "tests/**"
+    - "docs/**"
+
+  restricted_operations:
+    - "rm -rf"
+    - "sudo"
+    - "chmod 777"
+
+# Slash Commands
+commands:
+  path: ".claude/commands"
+  enabled: true
+  custom_commands:
+    - name: "db-query"
+      description: "Natural language database query"
+      skill: "database-operations"
+
+    - name: "vps-health"
+      description: "Check VPS server health"
+      agent: "vps-monitor"
+
+    - name: "agents/build"
+      description: "Build agent via harness"
+      script: "harness/runner.py"
+
+# MCP (Model Context Protocol) Settings
+mcp:
+  profiles:
+    default: ["context7"]
+    database: ["postgres-mcp", "context7"]
+    deployment: ["github", "context7"]
+    testing: ["playwright-mcp", "context7"]
+
+  auto_enable_by_task: true
+
+# Monitoring and Metrics
+monitoring:
+  metrics_path: "metrics/"
+  log_path: "logs/"
+
+  dashboards:
+    - name: "Agent Performance"
+      metrics: ["response_time", "token_usage", "success_rate"]
+
+    - name: "System Health"
+      metrics: ["memory_usage", "cpu_usage", "error_rate"]
+
+  alerts:
+    high_token_usage:
+      threshold: 10000
+      action: "notify"
+
+    slow_response:
+      threshold_ms: 5000
+      action: "log"
+
+# Environment-specific Overrides
+environments:
+  development:
+    models:
+      default: "claude-3-5-haiku-20241022"
+    performance:
+      cache_enabled: false
+    development:
+      debug_mode: true
+
+  production:
+    models:
+      default: "claude-3-5-sonnet-20241022"
+    security:
+      mask_credentials_in_logs: true
+    monitoring:
+      log_level: "WARNING"

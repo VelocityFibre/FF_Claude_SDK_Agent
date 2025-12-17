@@ -1,0 +1,200 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fibreflow-agent-workforce"
+version = "2.0.0"
+description = "Multi-agent AI system for fiber optic infrastructure operations"
+readme = "README.md"
+license = {text = "Proprietary"}
+authors = [
+    {name = "Velocity Fibre", email = "dev@velocityfibre.com"}
+]
+maintainers = [
+    {name = "FibreFlow Team", email = "fibreflow@velocityfibre.com"}
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+keywords = ["ai", "agents", "claude", "fiber-optics", "infrastructure"]
+
+dependencies = [
+    "anthropic>=0.72.0",
+    "psycopg2-binary>=2.9.11",
+    "fastapi>=0.104.1",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "requests>=2.31.0",
+    "httpx>=0.25.2",
+    "python-dotenv>=1.0.0",
+    "python-dateutil>=2.8.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.3",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.1",
+    "pytest-mock>=3.12.0",
+    "black>=23.12.1",
+    "ruff>=0.1.9",
+    "mypy>=1.8.0",
+    "pre-commit>=3.6.0",
+    "ipython>=8.19.0",
+    "ipdb>=0.13.13",
+    "rich>=13.7.0",
+    "types-requests>=2.31.0.10",
+    "types-python-dateutil>=2.8.19.14",
+]
+
+brain = [
+    "qdrant-client>=1.7.3",
+    "numpy>=1.26.2",
+]
+
+production = [
+    "gunicorn>=21.2.0",
+    "sentry-sdk[fastapi]>=1.39.1",
+    "prometheus-client>=0.19.0",
+    "cryptography>=41.0.7",
+    "pyjwt>=2.8.0",
+    "redis>=5.0.1",
+    "orjson>=3.9.10",
+]
+
+[project.urls]
+Homepage = "https://github.com/VelocityFibre/FibreFlow-Agent-Workforce"
+Documentation = "https://github.com/VelocityFibre/FibreFlow-Agent-Workforce/tree/main/docs"
+Repository = "https://github.com/VelocityFibre/FibreFlow-Agent-Workforce.git"
+Issues = "https://github.com/VelocityFibre/FibreFlow-Agent-Workforce/issues"
+
+[project.scripts]
+fibreflow = "orchestrator.orchestrator:main"
+neon-agent = "agents.neon_database.neon_agent:main"
+convex-agent = "agents.convex_database.convex_agent:main"
+
+[tool.setuptools]
+packages = ["agents", "orchestrator", "shared", "memory", "harness"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.json", "*.md"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | legacy
+)/
+'''
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "ARG",  # flake8-unused-arguments
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501",  # line too long (handled by black)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+    "W191",  # indentation contains tabs
+]
+exclude = [
+    ".git",
+    "__pycache__",
+    "venv",
+    "legacy",
+    "*.egg-info",
+    ".mypy_cache",
+    ".pytest_cache",
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+"tests/*" = ["ARG", "S101"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+exclude = [
+    "venv/",
+    "legacy/",
+    "tests/",
+]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--disable-warnings",
+]
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (slower, may require external resources)",
+    "slow: Slow-running tests",
+    "vps: VPS Monitor agent tests",
+    "database: Database agent tests",
+    "orchestrator: Orchestrator tests",
+    "skills: Skills-based architecture tests",
+]
+
+[tool.coverage.run]
+source = ["agents", "orchestrator", "shared", "memory"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__pycache__/*",
+    "*/legacy/*",
+    "*/venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

@@ -1,0 +1,24 @@
+# Base Requirements - Core dependencies for all environments
+# Last updated: 2025-12-17
+
+# Core AI & SDK
+anthropic==0.72.0
+
+# Database
+psycopg2-binary==2.9.11
+# psycopg2-pool included in psycopg2-binary
+
+# Web Framework (for API)
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+
+# HTTP & Networking
+requests==2.31.0
+httpx==0.25.2
+
+# Environment & Configuration
+python-dotenv==1.0.0
+
+# Utilities
+python-dateutil==2.8.2

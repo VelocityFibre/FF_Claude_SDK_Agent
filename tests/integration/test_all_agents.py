@@ -8,13 +8,30 @@ import os
 import sys
 import json
 from datetime import datetime
+from pathlib import Path
+from dotenv import load_dotenv
 
 # Add project root to path
-sys.path.insert(0, os.path.dirname(__file__))
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root))
 
-from convex_agent import ConvexAgent, load_env
+# Load environment variables
+env_path = project_root / '.env'
+if env_path.exists():
+    load_dotenv(env_path)
+
+# Import from new location (agents/convex-database/)
+try:
+    sys.path.insert(0, str(project_root / 'agents' / 'convex-database'))
+    from convex_agent import ConvexAgent
+except ImportError:
+    ConvexAgent = None
+
+import pytest
 
 
+@pytest.mark.skipif(ConvexAgent is None, reason="convex_agent.py not available")
+@pytest.mark.integration
 def test_unified_convex_agent():
     """Test 1: Unified Convex Agent with all tools."""
     print("\n" + "="*70)

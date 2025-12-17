@@ -116,7 +116,48 @@ ssh louisdup@72.60.17.245 "cd /home/louisdup/agents && \
   sudo systemctl restart fibreflow-api"
 ```
 
-**For detailed deployment strategies, see `DEPLOYMENT_WORKFLOW.md`**
+**For detailed deployment strategies, see `docs/guides/DEPLOYMENT_WORKFLOW.md`**
+
+### Monitoring & Performance
+```bash
+# View metrics and performance
+./venv/bin/python3 -m metrics.collector  # Test metrics collection
+./venv/bin/python3 -m benchmarks.performance_suite  # Run benchmarks
+
+# Check skill versions
+./venv/bin/python3 .claude/skills/skill_version_manager.py
+
+# View logs
+tail -f logs/fibreflow.log
+tail -f logs/fibreflow_errors.log
+
+# Generate performance report
+./venv/bin/python3 -c "from metrics.collector import get_collector; \
+  print(get_collector().generate_report())"
+```
+
+**Logging**:
+- Structured logging with JSON format for production
+- Colored console output for development
+- Automatic request tracking and performance metrics
+- Error aggregation in separate log file
+
+**Metrics Collection**:
+- Agent performance (response time, success rate)
+- Skill usage and effectiveness
+- Token consumption tracking
+- System health monitoring
+
+**Performance Targets** (from `.claude/config.yaml`):
+- Skill response time: <100ms
+- Context usage: <1000 tokens
+- Success rate: >95%
+
+**Benchmarking**:
+- Comprehensive performance suite in `benchmarks/`
+- Skills vs Agents comparison
+- Database query performance
+- Memory footprint analysis
 
 ## Architecture
 
@@ -133,6 +174,7 @@ FibreFlow uses **Claude Code Skills** with progressive disclosure for database o
 
 **Current Skills**:
 - `database-operations/` - Neon PostgreSQL interface with connection pooling
+- `vf-server/` - VF Velocity server operations via SSH (Tailscale: 100.96.203.105)
 
 **How It Works**:
 ```
@@ -343,6 +385,11 @@ NEON_DATABASE_URL=postgresql://...
 
 # Convex Backend
 CONVEX_URL=https://quixotic-crow-802.convex.cloud
+
+# VF Server Access (SSH key auth preferred)
+VF_SERVER_HOST=100.96.203.105
+VF_SERVER_USER=louis
+# VF_SERVER_PASSWORD=<password>  # Optional - leave unset for SSH key auth
 ```
 
 See `.env.example` for complete list with documentation.
@@ -1095,7 +1142,7 @@ Nginx (Port 80/443) → FastAPI (Port 8000) → Agent (Claude) → Databases
 1. **Always activate venv**: Use `./venv/bin/python3`, not `python3`
 2. **Agent routing**: Check `orchestrator/registry.json` triggers if agent not selected
 3. **Convex functions**: Deploy with `npx convex deploy` before testing
-4. **SSH keys**: VPS Monitor requires SSH key in `~/.ssh/` (not in repo)
+4. **SSH keys**: VPS Monitor and VF Server skills use SSH keys in `~/.ssh/` (never commit keys to repo)
 5. **Context limits**: Superior Agent Brain uses 200K token context window
 6. **Neon sync**: Run `sync_neon_to_convex.py` after Neon schema changes
 
@@ -1130,5 +1177,5 @@ Nginx (Port 80/443) → FastAPI (Port 8000) → Agent (Claude) → Databases
 - **Agent Harness**: For complex agents (6+ tools), use the autonomous harness (`/agents/build`) instead of manual development. It builds complete agents overnight with 100% test coverage.
 - **Two Memory Systems**: Domain Memory (task state via feature_list.json) vs Superior Agent Brain (cross-session learning via vector DB). Use the right one for the job.
 - **Dual Databases**: Neon is source of truth for business data. Convex is for operational/real-time data. Keep them synced.
-- **SSH Access**: VPS Monitor uses SSH keys, never passwords. Keys stored in `~/.ssh/`, never in repo.
+- **SSH Access**: VPS Monitor and VF Server skills use SSH keys for authentication. Keys stored in `~/.ssh/`, never in repo. VF Server (100.96.203.105) verified working with key auth.
 - **Convex Deployment**: Always deploy Convex functions before testing agents that use them.

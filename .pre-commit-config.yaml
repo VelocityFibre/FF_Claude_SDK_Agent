@@ -1,0 +1,124 @@
+# Pre-commit hooks for code quality and consistency
+# Install: pip install pre-commit
+# Setup: pre-commit install
+# Run manually: pre-commit run --all-files
+
+default_language_version:
+  python: python3.8
+
+repos:
+  # General file fixes
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '^legacy/'
+      - id: end-of-file-fixer
+        exclude: '^legacy/'
+      - id: check-yaml
+        exclude: '^legacy/'
+      - id: check-json
+        exclude: '^(legacy/|data/.*\.json$)'
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: debug-statements
+        exclude: '^legacy/'
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+
+  # Python code formatting
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3.8
+        exclude: '^(legacy/|venv/)'
+
+  # Python linting
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.9
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        exclude: '^(legacy/|venv/)'
+
+  # Python imports sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black", "--line-length", "100"]
+        exclude: '^(legacy/|venv/)'
+
+  # Python security checks
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        args: ["-ll", "-r"]
+        files: '^(agents|orchestrator|shared|memory)/.*\.py$'
+        exclude: '^(tests/|legacy/)'
+
+  # Python type checking (optional - may be slow)
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.8.0
+  #   hooks:
+  #     - id: mypy
+  #       additional_dependencies: [types-requests, types-python-dateutil]
+  #       exclude: '^(legacy/|tests/)'
+
+  # Markdown formatting
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint-fix
+        args: ["--disable", "MD013", "MD033", "MD041"]  # Disable line length, HTML, and first header rules
+        exclude: '^(legacy/|docs/archive/)'
+
+  # YAML formatting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.33.0
+    hooks:
+      - id: yamllint
+        args: ['-d', 'relaxed']
+        exclude: '^legacy/'
+
+  # Check for secrets
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: '^(legacy/|\.env\.example$)'
+
+  # Requirements file checks
+  - repo: https://github.com/peterdemin/pip-compile-multi
+    rev: v2.6.3
+    hooks:
+      - id: pip-compile-multi-verify
+        files: '^requirements/.*\.txt$'
+
+# Local hooks
+  - repo: local
+    hooks:
+      - id: check-claude-config
+        name: Validate Claude configuration
+        entry: python -c "import yaml; yaml.safe_load(open('.claude/config.yaml'))"
+        language: system
+        files: '^\.claude/config\.yaml$'
+
+      - id: check-no-root-python
+        name: No Python files in root
+        entry: bash -c 'if ls *.py 2>/dev/null | grep -v setup.py; then echo "Python files found in root!"; exit 1; fi'
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: check-skills-manifest
+        name: Validate skills manifests
+        entry: bash -c 'for f in .claude/skills/*/skill.md; do if [ -f "$f" ]; then head -1 "$f" | grep -q "^---$" || (echo "$f missing YAML frontmatter" && exit 1); fi; done'
+        language: system
+        pass_filenames: false
+        files: '^\.claude/skills/.*/skill\.md$'

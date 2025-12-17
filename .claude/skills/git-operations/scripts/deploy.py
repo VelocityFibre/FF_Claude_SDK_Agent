@@ -19,7 +19,7 @@ def deploy(message):
     result['steps'].append(test_step)
 
     test_result = subprocess.run(
-        ['pytest', 'tests/', '-q'],
+        ['./venv/bin/pytest', 'tests/', '-q'],
         capture_output=True, text=True
     )
 
