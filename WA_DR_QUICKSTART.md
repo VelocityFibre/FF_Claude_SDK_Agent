@@ -22,7 +22,20 @@ The system is ready to monitor new DR submissions from the wa-monitor workflow, 
 - Edit feedback messages before sending
 - Approve/reject evaluations
 
-## 🔴 IMPORTANT: Current Issue
+## 🚨 CRITICAL REQUIREMENTS
+
+### 1. WhatsApp Service Must Be Running & Paired
+
+**The wa-monitor feedback feature requires:**
+- ✅ WhatsApp Sender service running on VF server (100.96.203.105:8081)
+- ✅ Phone +27 71 155 8396 paired via WhatsApp "Linked Devices"
+- ✅ Session active (stored in `~/whatsapp-sender/store/whatsapp.db`)
+
+**If feedback fails with "the store doesn't contain a device JID":**
+- Phone is not paired to the WhatsApp service
+- See `WA_MONITOR_SETUP.md` for complete pairing instructions
+
+### 2. VLM API Issue
 
 The VLM (Vision Language Model) API is timing out when evaluating images. This needs to be resolved on the server side. The evaluation endpoint exists but the image processing service appears to be down or misconfigured.
 

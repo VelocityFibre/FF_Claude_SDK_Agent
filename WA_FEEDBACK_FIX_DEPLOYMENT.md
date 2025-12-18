@@ -88,6 +88,25 @@ curl -X POST https://app.fibreflow.app/api/foto/feedback \
 5. Click "Approve & Send"
 6. Verify WhatsApp message is sent
 
+## 🚨 CRITICAL PREREQUISITE: WhatsApp Service
+
+**Before deploying or testing, ensure:**
+
+1. **WhatsApp Sender service is running** on VF server (100.96.203.105:8081)
+2. **Phone +27 71 155 8396 is paired** via WhatsApp "Linked Devices"
+3. **Session is active** (check `curl http://localhost:8081/health` on server)
+
+**If feedback fails with error "the store doesn't contain a device JID":**
+- The phone is not paired to the WhatsApp service
+- Follow pairing instructions in `WA_MONITOR_SETUP.md`
+
+**Quick Check**:
+```bash
+# On VF server
+curl http://localhost:8081/health
+# Should return: {"status":"ok","service":"whatsapp-sender","connected":true}
+```
+
 ## Backend Requirements
 
 The backend API at `https://app.fibreflow.app/api/foto/feedback` must:

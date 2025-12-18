@@ -27,6 +27,47 @@ Provides direct access to Velocity Fibre server operations without exploration.
 - **Ollama**: Local LLM service (port 11434)
 - **Qdrant**: Vector database (port 6333)
 - **FibreFlow API**: Production API (port 80)
+- **WhatsApp Sender**: WhatsApp messaging service (port 8081) - **REQUIRES PHONE +27 71 155 8396 PAIRED**
+
+## WhatsApp Sender Service
+
+**CRITICAL**: The wa-monitor module at https://app.fibreflow.app/wa-monitor depends on the WhatsApp Sender service.
+
+### Phone Pairing Required
+- **Phone Number**: +27 71 155 8396
+- **Status**: Must be paired via WhatsApp "Linked Devices"
+- **Session Storage**: `~/whatsapp-sender/store/whatsapp.db` on VF server
+- **Service Location**: `~/whatsapp-sender/whatsapp-sender` (Go binary)
+- **Logs**: `~/whatsapp-sender/whatsapp-sender.log`
+
+### Quick Commands
+
+```bash
+# Check if service is running
+VF_SERVER_PASSWORD="VeloAdmin2025!" .claude/skills/vf-server/scripts/execute.py 'ps aux | grep whatsapp-sender | grep -v grep'
+
+# View service logs
+VF_SERVER_PASSWORD="VeloAdmin2025!" .claude/skills/vf-server/scripts/execute.py 'tail -30 ~/whatsapp-sender/whatsapp-sender.log'
+
+# Check health
+VF_SERVER_PASSWORD="VeloAdmin2025!" .claude/skills/vf-server/scripts/execute.py 'curl -s http://localhost:8081/health'
+
+# Restart service
+VF_SERVER_PASSWORD="VeloAdmin2025!" .claude/skills/vf-server/scripts/execute.py 'pkill -f whatsapp-sender && cd ~/whatsapp-sender && nohup ./whatsapp-sender > whatsapp-sender.log 2>&1 &'
+```
+
+### When Phone Pairing is Lost
+
+If logs show "Device not logged in - generating pairing code":
+
+1. View the pairing code in logs
+2. On phone +27 71 155 8396:
+   - Open WhatsApp → Settings → Linked Devices
+   - Tap "Link a Device" → "Link with Phone Number Instead"
+   - Enter the pairing code
+3. Service will automatically reconnect
+
+**See**: `WA_MONITOR_SETUP.md` for complete setup and troubleshooting guide
 
 ## Connection Methods
 
