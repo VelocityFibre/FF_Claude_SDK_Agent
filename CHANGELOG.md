@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Infrastructure
+- VF Server: Set up Cloudflare Tunnel for public APK downloads (2025-12-18)
+  - Enabled: `https://vf.fibreflow.app/downloads` for field agent access
+  - Method: Cloudflare Tunnel (no port forwarding required)
+  - Domain: Migrated fibreflow.app nameservers to Cloudflare
+  - Tunnel: Named tunnel `vf-downloads` (ID: 0bf9e4fa-f650-498c-bd23-def05abe5aaf)
+  - Temporary URL: Available via Tailscale at `http://velo-server.tailce437e.ts.net/downloads`
 - VF Server: Moved FibreFlow application from `/home/louis/apps/fibreflow/` to `/srv/data/apps/fibreflow/` (2025-12-17)
   - Reason: Utilize faster NVMe storage and standardize production paths
   - Impact: Requires rebuild of Next.js application, updated ecosystem.config.js

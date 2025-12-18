@@ -12,6 +12,155 @@ This log tracks operational changes, deployments, migrations, incidents, and sys
 
 ---
 
+## 2025-12-18
+
+### 12:18 UTC - VF Server: Cloudflare Tunnel Setup for Public APK Downloads
+
+**Type**: Infrastructure Setup / Public Access Enablement
+**Severity**: Low (additive change, no downtime)
+**Status**: ✅ Complete (pending DNS propagation 1-4 hours)
+**Operator**: Claude Code + Louis
+
+**Change**:
+Set up Cloudflare Tunnel to enable public access to VF server download page without port forwarding or VPN requirements.
+
+**Problem Statement**:
+- VF Server (100.96.203.105) behind NAT router, port 80/443 not accessible from internet
+- Field agents needed simple public URL to download Image Eval APK
+- Tailscale VPN required for current access (too complex for field users)
+- Port forwarding would expose server directly to internet (security concern)
+
+**Solution**:
+Implemented Cloudflare Tunnel (Zero Trust architecture) to create secure public access without opening router ports.
+
+**Procedure**:
+
+1. **Installed cloudflared on VF server**:
+   ```bash
+   wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+   chmod +x cloudflared
+   mv cloudflared ~/cloudflared
+   ```
+
+2. **Migrated domain to Cloudflare**:
+   - Added `fibreflow.app` to Cloudflare account
+   - Updated nameservers at Xneelo registrar:
+     - Old: `ns1.host-h.net`, `ns2.dns-h.com`
+     - New: `anton.ns.cloudflare.com`, `haley.ns.cloudflare.com`
+
+3. **Authenticated cloudflared**:
+   ```bash
+   ~/cloudflared tunnel login
+   # Authorized via browser at dash.cloudflare.com
+   ```
+
+4. **Created named tunnel**:
+   ```bash
+   ~/cloudflared tunnel create vf-downloads
+   # Tunnel ID: 0bf9e4fa-f650-498c-bd23-def05abe5aaf
+   # Credentials: ~/.cloudflared/0bf9e4fa-f650-498c-bd23-def05abe5aaf.json
+   ```
+
+5. **Configured tunnel routing**:
+   ```yaml
+   # ~/.cloudflared/config.yml
+   tunnel: 0bf9e4fa-f650-498c-bd23-def05abe5aaf
+   credentials-file: /home/louis/.cloudflared/0bf9e4fa-f650-498c-bd23-def05abe5aaf.json
+   ingress:
+     - hostname: vf.fibreflow.app
+       service: http://localhost:80
+     - service: http_status:404
+   ```
+
+6. **Set up DNS routing**:
+   ```bash
+   ~/cloudflared tunnel route dns vf-downloads vf.fibreflow.app
+   # Created CNAME: vf.fibreflow.app → 0bf9e4fa-f650-498c-bd23-def05abe5aaf.cfargotunnel.com
+   ```
+
+7. **Updated nginx configuration**:
+   ```nginx
+   # /etc/nginx/sites-available/vf-fibreflow
+   server {
+       listen 80;
+       server_name _;  # Accept all hostnames (was: vf.fibreflow.app)
+       location / {
+           proxy_pass http://localhost:3005;
+           # ... proxy headers
+       }
+   }
+   ```
+
+8. **Started tunnel**:
+   ```bash
+   nohup ~/cloudflared tunnel run vf-downloads > /tmp/cloudflared-named.log 2>&1 &
+   # Registered 4 tunnel connections (dur01, cpt02 locations)
+   ```
+
+**DNS Records Added to Cloudflare**:
+- `app.fibreflow.app` → 72.60.17.245 (Hostinger VPS)
+- `fibreflow.app` → 216.150.1.1 (Root domain)
+- `vf.fibreflow.app` → 0bf9e4fa-f650-498c-bd23-def05abe5aaf.cfargotunnel.com (Tunnel CNAME)
+
+**Verification**:
+```bash
+# Tunnel status
+ps aux | grep "cloudflared tunnel run"  # ✅ Running (PID 104776)
+tail -f /tmp/cloudflared-named.log      # ✅ 4 connections registered
+
+# DNS check (will show Cloudflare IPs after propagation)
+dig vf.fibreflow.app +short             # Currently: 100.96.203.105 (old)
+dig NS fibreflow.app +short             # Currently: ns1.host-h.net (propagating)
+
+# Test URLs
+curl https://vf.fibreflow.app/downloads # Pending nameserver propagation
+curl http://velo-server.tailce437e.ts.net/downloads  # ✅ Works via Tailscale
+```
+
+**Public URLs** (post-propagation):
+- Download page: `https://vf.fibreflow.app/downloads`
+- Direct APK: `https://vf.fibreflow.app/veloqa-imageeval-v1.2.0.apk`
+
+**Temporary Access**:
+- Tailscale users: `http://velo-server.tailce437e.ts.net/downloads`
+
+**Impact**:
+- ✅ Field agents can download APKs via simple HTTPS URL (no VPN needed)
+- ✅ Automatic HTTPS with Cloudflare certificate
+- ✅ DDoS protection and CDN caching included
+- ✅ No router configuration or port forwarding required
+- ✅ VF server remains protected behind NAT
+
+**Rollback Procedure**:
+```bash
+# Stop tunnel
+pkill cloudflared
+
+# Revert nameservers at Xneelo to:
+ns1.host-h.net, ns2.dns-h.com, ns1.dns-h.com, ns2.host-h.net
+
+# Remove DNS records from Cloudflare
+# Remove tunnel: cloudflared tunnel delete vf-downloads
+```
+
+**Next Steps**:
+- Monitor DNS propagation (check in 2-4 hours)
+- Set up systemd service for tunnel auto-start on reboot
+- Test public URL from external network once DNS propagates
+- Share URL with field agents
+
+**Files Modified**:
+- `/etc/nginx/sites-available/vf-fibreflow` - Updated server_name to accept all hosts
+- `/home/louis/.cloudflared/config.yml` - Tunnel configuration (new)
+- `/home/louis/.cloudflared/*.json` - Tunnel credentials (new)
+
+**Architecture**:
+```
+Field Agent → Internet → Cloudflare → Tunnel (outbound conn) → VF Server nginx → Next.js
+```
+
+---
+
 ## 2025-12-17
 
 ### 20:40 UTC - VF Server: FibreFlow Application Migration
