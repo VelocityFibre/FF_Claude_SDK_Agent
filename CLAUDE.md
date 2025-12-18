@@ -175,6 +175,8 @@ FibreFlow uses **Claude Code Skills** with progressive disclosure for database o
 **Current Skills**:
 - `database-operations/` - Neon PostgreSQL interface with connection pooling
 - `vf-server/` - VF Velocity server operations via SSH (Tailscale: 100.96.203.105)
+  - **Production path**: `/srv/data/apps/fibreflow/` (NVMe storage, as of 2025-12-17)
+  - See `docs/OPERATIONS_LOG.md` for migration details
 
 **How It Works**:
 ```
@@ -390,9 +392,23 @@ CONVEX_URL=https://quixotic-crow-802.convex.cloud
 VF_SERVER_HOST=100.96.203.105
 VF_SERVER_USER=louis
 # VF_SERVER_PASSWORD=<password>  # Optional - leave unset for SSH key auth
+
+# WhatsApp Sender Service (for wa-monitor module)
+# CRITICAL: Phone +27 71 155 8396 must be paired to WhatsApp service
+# See WA_MONITOR_SETUP.md for pairing instructions
 ```
 
 See `.env.example` for complete list with documentation.
+
+### WhatsApp Service Dependencies
+
+**CRITICAL FOR wa-monitor MODULE**: The feedback feature at https://app.fibreflow.app/wa-monitor **requires** the WhatsApp Sender service to be running on the VF server with phone +27 71 155 8396 paired.
+
+- **Service**: WhatsApp Sender (Go binary at `~/whatsapp-sender/`)
+- **Port**: 8081
+- **Phone**: +27 71 155 8396 (must be paired via WhatsApp Linked Devices)
+- **Session**: Stored in `~/whatsapp-sender/store/whatsapp.db`
+- **Documentation**: See `WA_MONITOR_SETUP.md` for complete setup guide
 
 ## Database Context
 
@@ -1137,6 +1153,19 @@ Nginx (Port 80/443) → FastAPI (Port 8000) → Agent (Claude) → Databases
 
 **Web Interface**: `ui-module/chat.html` - Markdown rendering, gradient UI, VF branding
 
+**WA Monitor Module** (https://app.fibreflow.app/wa-monitor):
+```
+Frontend → Next.js API (/api/wa-monitor-send-feedback) → WhatsApp Sender (Port 8081)
+                                                                ↓
+                                                   WhatsApp Web API (whatsmeow)
+                                                                ↓
+                                                   Phone +27 71 155 8396 (MUST BE PAIRED)
+                                                                ↓
+                                                   WhatsApp Groups (by project)
+```
+
+**CRITICAL**: The WhatsApp Sender service requires phone +27 71 155 8396 to be paired via WhatsApp "Linked Devices" feature. See `WA_MONITOR_SETUP.md` for pairing instructions.
+
 ## Common Pitfalls
 
 1. **Always activate venv**: Use `./venv/bin/python3`, not `python3`
@@ -1145,8 +1174,15 @@ Nginx (Port 80/443) → FastAPI (Port 8000) → Agent (Claude) → Databases
 4. **SSH keys**: VPS Monitor and VF Server skills use SSH keys in `~/.ssh/` (never commit keys to repo)
 5. **Context limits**: Superior Agent Brain uses 200K token context window
 6. **Neon sync**: Run `sync_neon_to_convex.py` after Neon schema changes
+7. **WhatsApp feedback failing**: Check that WhatsApp Sender service is running and phone +27 71 155 8396 is paired. Error "the store doesn't contain a device JID" means phone is not paired. See `WA_MONITOR_SETUP.md`
 
 ## Documentation Structure
+
+**Operational Documentation** (Infrastructure & Decisions):
+- `CHANGELOG.md` - Feature releases, version history, what changed
+- `docs/OPERATIONS_LOG.md` - Server changes, deployments, migrations, incidents
+- `docs/DECISION_LOG.md` - Architectural decisions (ADRs), why we chose this approach
+- `docs/DOCUMENTATION_FRAMEWORK.md` - How to decide what/where to document
 
 **Quick References**:
 - `PROJECT_SUMMARY.md` - Overall project overview
@@ -1157,6 +1193,9 @@ Nginx (Port 80/443) → FastAPI (Port 8000) → Agent (Claude) → Databases
 - `NEON_AGENT_GUIDE.md` - Complete Neon agent documentation
 - `CONVEX_AGENT_GUIDE.md` - Convex agent documentation
 - `agents/vps-monitor/README.md` - VPS monitoring guide
+- `WA_MONITOR_SETUP.md` - **WhatsApp Sender service setup and phone pairing guide (CRITICAL for wa-monitor)**
+- `WA_DR_QUICKSTART.md` - WA DR monitoring system quickstart
+- `WA_FEEDBACK_FIX_DEPLOYMENT.md` - WhatsApp feedback fix deployment
 
 **Architecture**:
 - `DOMAIN_MEMORY_GUIDE.md` - **Domain memory patterns and philosophy** (read this first!)
@@ -1178,4 +1217,7 @@ Nginx (Port 80/443) → FastAPI (Port 8000) → Agent (Claude) → Databases
 - **Two Memory Systems**: Domain Memory (task state via feature_list.json) vs Superior Agent Brain (cross-session learning via vector DB). Use the right one for the job.
 - **Dual Databases**: Neon is source of truth for business data. Convex is for operational/real-time data. Keep them synced.
 - **SSH Access**: VPS Monitor and VF Server skills use SSH keys for authentication. Keys stored in `~/.ssh/`, never in repo. VF Server (100.96.203.105) verified working with key auth.
+- **VF Server Paths**: Production apps deployed to `/srv/data/apps/` (NVMe storage). FibreFlow at `/srv/data/apps/fibreflow/` (migrated 2025-12-17). See `docs/OPERATIONS_LOG.md` for procedures.
 - **Convex Deployment**: Always deploy Convex functions before testing agents that use them.
+- **Documentation**: Important changes documented in CHANGELOG.md (what), docs/OPERATIONS_LOG.md (how), and docs/DECISION_LOG.md (why). See `docs/DOCUMENTATION_FRAMEWORK.md` for guidelines.
+- **WhatsApp Service**: **CRITICAL** - The wa-monitor feedback feature (https://app.fibreflow.app/wa-monitor) requires WhatsApp Sender service running on VF server with phone +27 71 155 8396 paired. Service runs on port 8081. Session stored in `~/whatsapp-sender/store/whatsapp.db` - **NEVER DELETE**. See `WA_MONITOR_SETUP.md` for complete setup and troubleshooting.
