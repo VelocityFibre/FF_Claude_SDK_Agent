@@ -106,6 +106,36 @@ sudo apt-get install sshpass
 
 All methods work with the skill scripts.
 
+## Installation Paths on VF Server
+
+### Production Data (NVMe Storage: /srv/data/)
+
+```
+/srv/data/
+├── boss/                    # BOSS production data
+├── apps/
+│   ├── fibreflow/          # FibreFlow deployment (when ready)
+│   │   ├── data/           # App database, uploads
+│   │   └── .env            # Production config
+│   └── qfield/             # QField deployment
+└── backups/                # Production backups
+```
+
+### Automated Scripts (Cron Jobs: /srv/scripts/cron/)
+
+```
+/srv/scripts/cron/
+├── README.md               # Complete documentation
+├── backups/                # Database & data backups
+│   └── example_postgres_backup.sh
+├── maintenance/            # System cleanup, updates
+├── monitoring/             # Health checks, alerts
+└── boss/                   # BOSS-specific tasks
+    └── example_knowledge_refresh.sh
+```
+
+**Note**: All production applications should be deployed under `/srv/data/apps/` on the fast NVMe storage.
+
 ## Verification Status
 
 **Last Tested**: December 17, 2025

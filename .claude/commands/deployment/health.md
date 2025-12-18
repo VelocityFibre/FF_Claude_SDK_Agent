@@ -6,8 +6,11 @@ description: Check VPS health metrics and system status
 
 Check production VPS health and system status.
 
-**Server**: srv1092611.hstgr.cloud (Hostinger VPS, Lithuania)
-**Production URL**: http://72.60.17.245/
+**Supported Servers**:
+- **Hostinger VPS**: srv1092611.hstgr.cloud (72.60.17.245, Lithuania) - Public FibreFlow
+- **VF Server**: velo-server (100.96.203.105 via Tailscale) - Internal operations
+  - Production paths: `/srv/data/apps/`, `/srv/scripts/cron/`
+  - For VF-specific operations, see `.claude/skills/vf-server/`
 
 ## Execution
 

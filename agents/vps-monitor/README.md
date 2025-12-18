@@ -6,7 +6,13 @@
 
 ## What This Does
 
-The VPS Monitor Agent provides a **natural language interface** to monitor your Hostinger VPS server. Instead of running complex SSH commands and parsing output manually, you can ask questions like "Is the server healthy?" and get intelligent, actionable responses.
+The VPS Monitor Agent provides a **natural language interface** to monitor VPS servers. Instead of running complex SSH commands and parsing output manually, you can ask questions like "Is the server healthy?" and get intelligent, actionable responses.
+
+**Supported Servers**:
+- **Hostinger VPS** (72.60.17.245): Public-facing FibreFlow deployment
+- **VF Server** (100.96.203.105 via Tailscale): Internal operations
+  - Production paths: `/srv/data/apps/`, `/srv/scripts/cron/`
+  - See `.claude/skills/vf-server/README.md` for VF-specific operations
 
 **Example:**
 ```

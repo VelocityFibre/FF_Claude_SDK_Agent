@@ -2,7 +2,7 @@
   "agent_id": "vps-monitor",
   "name": "VPS Monitor Agent",
   "version": "1.0.0",
-  "description": "Monitors Hostinger VPS (srv1092611.hstgr.cloud) via SSH. Provides real-time metrics on CPU, memory, disk, processes, and services.",
+  "description": "Monitors Hostinger VPS (srv1092611.hstgr.cloud) for public FibreFlow deployment. For VF Server (100.96.203.105) internal operations, use .claude/skills/vf-server/ instead.",
   "type": "infrastructure",
   "capabilities": [
     "system_monitoring",

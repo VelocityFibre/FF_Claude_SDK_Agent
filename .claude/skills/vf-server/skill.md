@@ -75,6 +75,30 @@ If logs show "Device not logged in - generating pairing code":
 2. **WireGuard**: Via 10.10.0.1
 3. **Local Network**: 192.168.1.150
 
+## Installation Paths on VF Server
+
+**Production Data** (NVMe storage):
+```
+/srv/data/
+├── boss/                    # BOSS production data
+├── apps/
+│   ├── fibreflow/          # FibreFlow deployment (when ready)
+│   │   ├── data/           # App database, uploads
+│   │   └── .env            # Production config
+│   └── qfield/             # QField deployment
+└── backups/                # Production backups
+```
+
+**Automated Scripts** (Cron jobs):
+```
+/srv/scripts/cron/
+├── README.md               # Complete documentation
+├── backups/                # Database & data backups
+├── maintenance/            # System cleanup, updates
+├── monitoring/             # Health checks, alerts
+└── boss/                   # BOSS-specific tasks
+```
+
 ## Security
 
 All credentials stored in environment variables:

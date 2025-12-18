@@ -1,5 +1,8 @@
 # Hostinger VPS Details
 
+**Purpose**: Public-facing FibreFlow API and web interface
+**Note**: This is separate from VF Server (100.96.203.105) used for internal operations. See `.claude/skills/vf-server/README.md` for VF Server details.
+
 **Server Information**
 
 ```

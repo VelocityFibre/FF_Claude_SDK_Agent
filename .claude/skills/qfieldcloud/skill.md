@@ -273,11 +273,118 @@ Key API endpoints to monitor:
 - `/api/v1/users/` - User management
 - `/swagger/` - API documentation
 
+## Self-Healing Prevention System
+
+QFieldCloud includes a comprehensive automated prevention and monitoring system to prevent upload failures and service degradation.
+
+### Monitor Daemon
+
+**Service**: `qfield-monitor` (systemd)
+**Script**: `/home/louisdup/VF/Apps/QFieldCloud/qfield_monitor_daemon.py`
+**Logs**: `/var/log/qfield_monitor.log` and `/var/log/qfield_monitor_error.log`
+
+Continuous health monitoring (every 5 minutes) with auto-recovery:
+- Detects stuck jobs (queued >10 minutes)
+- Monitors worker health and auto-restarts
+- Tracks failure rates (alerts if >30%)
+- Self-healing with automatic interventions
+
+```bash
+# Check monitor status
+sudo systemctl status qfield-monitor
+
+# View monitor logs
+tail -f /var/log/qfield_monitor.log
+
+# Restart monitor
+sudo systemctl restart qfield-monitor
+```
+
+### Rate Limiting
+
+**Script**: `qfield_rate_limiter.sh`
+
+Nginx rate limiting to prevent sync overload:
+- Global: 10 syncs/minute
+- Per-project: 5 syncs/minute
+- Throttle individual projects if needed
+
+```bash
+# Apply rate limiting
+./qfield_rate_limiter.sh --enable
+
+# Throttle specific project
+./qfield_rate_limiter.sh --throttle MOA_Pole_Audit
+```
+
+### Automated Maintenance
+
+**Cron Jobs** (configured via `qfield_cron_jobs.sh`):
+
+| Frequency | Script | Purpose |
+|-----------|--------|---------|
+| */5 min | `qfield_quick_check.sh` | Worker and API health |
+| */30 min | `qfield_cleanup.sh` | Docker resource cleanup |
+| */4 hours | `qfield_scheduled_restart.sh` | Preventive worker restart (if idle) |
+| Daily 2am | `qfield_daily_maintenance.sh` | Full maintenance cycle |
+| Daily 6am | `qfield_stats.sh` | Usage statistics report |
+
+```bash
+# View cron schedule
+crontab -l | grep qfield
+
+# Run maintenance manually
+./qfield_daily_maintenance.sh
+```
+
+### Prevention System Setup
+
+Complete setup in one command:
+```bash
+cd /home/louisdup/VF/Apps/QFieldCloud
+./SETUP_PREVENTION.sh
+```
+
+This installs:
+- Monitor daemon with systemd service
+- Rate limiting configuration
+- All automated cron jobs
+- Log rotation
+
+### Troubleshooting Prevention System
+
+**Monitor keeps restarting workers:**
+```bash
+# Check what's triggering it
+tail -f /var/log/qfield_monitor.log | grep "CRITICAL\|WARNING"
+
+# Temporarily stop monitor to fix manually
+sudo systemctl stop qfield-monitor
+# Fix the issue...
+sudo systemctl start qfield-monitor
+```
+
+**Disk full (100%):**
+```bash
+# Emergency cleanup
+ssh root@72.61.166.168 "docker system prune -a --volumes -f"
+
+# Check disk usage
+./scripts/docker.py --action check-disk
+```
+
+**Workers missing after cleanup:**
+```bash
+# Rebuild workers
+ssh root@72.61.166.168 "cd /opt/qfieldcloud && docker compose up -d worker_wrapper"
+```
+
 ## Notes
 
 - Always backup database before major updates
-- Monitor disk space on VPS (Docker images can be large)
+- Monitor disk space on VPS (Docker images can be large) - **automated via cron**
 - Regular certificate renewal for Let's Encrypt
 - Keep docker-compose.yml in sync with upstream
-- Monitor worker queue for stuck jobs
+- Monitor worker queue for stuck jobs - **automated via prevention system**
 - Check storage quotas regularly
+- Prevention system provides self-healing for common issues

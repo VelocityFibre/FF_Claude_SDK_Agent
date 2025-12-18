@@ -9,7 +9,7 @@
       "path": "agents/vps-monitor",
       "status": "active",
       "type": "infrastructure",
-      "description": "Monitors Hostinger VPS servers via SSH. Real-time CPU, memory, disk, process tracking.",
+      "description": "Monitors Hostinger VPS (72.60.17.245) for public FibreFlow. For VF Server internal operations, use .claude/skills/vf-server/.",
       "triggers": [
         "vps",
         "server",

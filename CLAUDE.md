@@ -6,8 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **FibreFlow Agent Workforce** - Multi-agent AI system for fiber optic infrastructure operations using Claude Agent SDK. Features specialized AI agents coordinated by an orchestrator, dual database backends (Neon PostgreSQL + Convex), and advanced memory systems.
 
-**Production URL**: http://72.60.17.245/
-**Deployment**: Hostinger VPS (srv1092611.hstgr.cloud, Lithuania)
+**Production URLs**:
+- Hostinger VPS: http://72.60.17.245/ (srv1092611.hstgr.cloud, Lithuania)
+- VF Server: http://100.96.203.105/ (velo-server via Tailscale)
+
+**Deployment Targets**:
+- Hostinger VPS: Public-facing FibreFlow API/UI
+- VF Server: Internal operations, BOSS integration, QField sync
 
 ## Commands
 
@@ -175,8 +180,9 @@ FibreFlow uses **Claude Code Skills** with progressive disclosure for database o
 **Current Skills**:
 - `database-operations/` - Neon PostgreSQL interface with connection pooling
 - `vf-server/` - VF Velocity server operations via SSH (Tailscale: 100.96.203.105)
-  - **Production path**: `/srv/data/apps/fibreflow/` (NVMe storage, as of 2025-12-17)
-  - See `docs/OPERATIONS_LOG.md` for migration details
+  - Production paths: `/srv/data/apps/`, `/srv/scripts/cron/`
+  - FibreFlow deployment: `/srv/data/apps/fibreflow/` (NVMe storage, migrated 2025-12-17)
+  - See `.claude/skills/vf-server/README.md` for complete installation structure
 
 **How It Works**:
 ```
@@ -284,6 +290,9 @@ FibreFlow implements **two distinct memory systems**:
 
 **Infrastructure Agents**:
 - `agents/vps-monitor/` - SSH-based VPS health monitoring (CPU, RAM, disk, processes)
+  - Hostinger VPS (72.60.17.245): Public-facing FibreFlow deployment
+  - VF Server (100.96.203.105): Internal operations via Tailscale
+    - Production paths: `/srv/data/apps/`, `/srv/scripts/cron/`
 
 **Database Agents**:
 - `agents/neon-database/` - Natural language SQL interface for Neon PostgreSQL
@@ -379,7 +388,7 @@ Required in `.env`:
 # All agents
 ANTHROPIC_API_KEY=sk-ant-api03-...
 
-# VPS Monitor
+# VPS Monitor (Hostinger - public FibreFlow)
 VPS_HOSTNAME=srv1092611.hstgr.cloud
 
 # Neon Database
@@ -388,8 +397,8 @@ NEON_DATABASE_URL=postgresql://...
 # Convex Backend
 CONVEX_URL=https://quixotic-crow-802.convex.cloud
 
-# VF Server Access (SSH key auth preferred)
-VF_SERVER_HOST=100.96.203.105
+# VF Server Access (Internal operations - Tailscale)
+VF_SERVER_HOST=100.96.203.105  # or velo-server
 VF_SERVER_USER=louis
 # VF_SERVER_PASSWORD=<password>  # Optional - leave unset for SSH key auth
 
@@ -397,6 +406,11 @@ VF_SERVER_USER=louis
 # CRITICAL: Phone +27 71 155 8396 must be paired to WhatsApp service
 # See WA_MONITOR_SETUP.md for pairing instructions
 ```
+
+**Server Installation Paths** (VF Server: 100.96.203.105):
+- Production apps: `/srv/data/apps/` (NVMe storage)
+- Cron scripts: `/srv/scripts/cron/`
+- See `.claude/skills/vf-server/README.md` for complete structure
 
 See `.env.example` for complete list with documentation.
 
