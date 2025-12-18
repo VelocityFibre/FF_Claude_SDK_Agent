@@ -6,6 +6,10 @@
 [![Claude SDK](https://img.shields.io/badge/Claude-Agent_SDK-blue)](https://github.com/anthropics/anthropic-sdk-python)
 [![Architecture](https://img.shields.io/badge/Architecture-Skills--Based-orange)](docs/architecture/)
 
+**Deployment Targets**:
+- **Hostinger VPS** (72.60.17.245): Public-facing FibreFlow API and web interface
+- **VF Server** (100.96.203.105): Internal operations, BOSS integration, QField sync
+
 ## Overview
 
 FibreFlow Agent Workforce is a production-ready AI agent system featuring:

@@ -7,7 +7,13 @@ argument-hint: [agent-name or 'all']
 
 Deploy **$ARGUMENTS** to production VPS with comprehensive validation.
 
-**Target**: srv1092611.hstgr.cloud (72.60.17.245)
+**Deployment Targets**:
+- **Hostinger VPS**: srv1092611.hstgr.cloud (72.60.17.245) - Public FibreFlow API/UI
+- **VF Server**: velo-server (100.96.203.105) - Internal operations, BOSS, QField
+  - Production paths: `/srv/data/apps/`, `/srv/scripts/cron/`
+  - Use `.claude/skills/vf-server/` for VF-specific operations
+
+**Primary Target**: Hostinger VPS (this guide)
 **Environment**: Production
 
 ## ⚠️ Pre-Deployment Checklist
