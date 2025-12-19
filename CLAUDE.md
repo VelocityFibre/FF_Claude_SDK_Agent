@@ -6,13 +6,39 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **FibreFlow Agent Workforce** - Multi-agent AI system for fiber optic infrastructure operations using Claude Agent SDK. Features specialized AI agents coordinated by an orchestrator, dual database backends (Neon PostgreSQL + Convex), and advanced memory systems.
 
-**Production URLs**:
-- Hostinger VPS: http://72.60.17.245/ (srv1092611.hstgr.cloud, Lithuania)
-- VF Server: http://100.96.203.105/ (velo-server via Tailscale)
+**Production URLs** (All via Cloudflare DNS):
+- **https://app.fibreflow.app** - Main FibreFlow app (Hostinger VPS)
+- **https://vf.fibreflow.app/downloads** - APK downloads (VF Server via Tunnel)
+- **https://support.fibreflow.app** - Support portal (VF Server via Tunnel)
+
+**Direct Access** (for troubleshooting):
+- Hostinger VPS: 72.60.17.245 (srv1092611.hstgr.cloud, Lithuania)
+- VF Server: 100.96.203.105:3005 (velo-server via Tailscale)
 
 **Deployment Targets**:
-- Hostinger VPS: Public-facing FibreFlow API/UI
-- VF Server: Internal operations, BOSS integration, QField sync
+- **Hostinger VPS** (72.60.17.245): Public-facing FibreFlow API/UI
+  - PM2 Process: `fibreflow-prod` on port 3005
+  - Nginx: SSL/TLS with Let's Encrypt, proxies to port 3005
+  - DNS: A record via Cloudflare (Full SSL/TLS mode)
+  - SSH: `ssh root@72.60.17.245` (password: VeloF@2025@@)
+
+- **VF Server** (100.96.203.105): Internal operations, BOSS integration, QField sync
+  - **FibreFlow Location**: `/srv/data/apps/fibreflow/` (NVMe storage)
+  - **Port**: 3005 (Next.js v14.2.18)
+  - **Cloudflare Tunnel**: `vf-downloads` (ID: 0bf9e4fa-f650-498c-bd23-def05abe5aaf)
+  - **Tunnel Config**: `~/.cloudflared/config.yml`
+  - **Tunnel Process**: Running in background, logs at `/tmp/cloudflared.log`
+  - SSH: `ssh louis@100.96.203.105` (via Tailscale or LAN)
+
+**DNS & Cloudflare Setup**:
+- **Domain**: fibreflow.app (registered with Xneelo)
+- **Nameservers**: anton.ns.cloudflare.com, haley.ns.cloudflare.com (migrated 2025-12-19)
+- **SSL/TLS Mode**: Full (origin has Let's Encrypt certificates)
+- **Tunnel Management**:
+  - Config: `~/.cloudflared/config.yml` on VF server
+  - Add new apps: Edit config → `~/cloudflared tunnel route dns vf-downloads HOSTNAME` → restart tunnel
+  - Restart: `pkill cloudflared && nohup ~/cloudflared tunnel run vf-downloads > /tmp/cloudflared.log 2>&1 &`
+- **Troubleshooting**: If `app.fibreflow.app` doesn't work, check Cloudflare SSL/TLS mode is "Full" (not Flexible)
 
 ## Commands
 
@@ -33,6 +59,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Test agent orchestration
 ./venv/bin/python3 orchestrator/orchestrator.py
+```
+
+### QFieldCloud Local Development
+```bash
+# Start all services for sync capability
+cd /home/louisdup/VF/Apps/QFieldCloud
+docker-compose up -d app db memcached worker_wrapper ofelia
+
+# Check sync readiness
+.claude/skills/qfieldcloud/scripts/sync_diagnostic.py
+
+# Monitor sync operations
+docker logs -f qfieldcloud-worker
+
+# CRITICAL: Worker service MUST be running for sync to work
+# Build time: ~15 minutes due to geospatial dependencies (GDAL, GEOS)
 ```
 
 ### Development
@@ -74,6 +116,27 @@ cd deploy && ./deploy_brain.sh
 # Run FastAPI agent server
 ./venv/bin/python3 ui-module/agent_api.py
 ```
+
+### Voice Agent (Grok Realtime)
+```bash
+# Validate voice agent setup
+./venv/bin/python3 test_voice_agent_setup.py
+
+# Run Grok voice agent (requires xAI API key + LiveKit)
+./venv/bin/python3 voice_agent_grok.py
+
+# Get API keys:
+# - xAI: https://x.ai/api
+# - LiveKit: https://cloud.livekit.io (free tier available)
+
+# Add to .env:
+# XAI_API_KEY=xai-your-key
+# LIVEKIT_URL=wss://your-project.livekit.cloud
+# LIVEKIT_API_KEY=your-key
+# LIVEKIT_API_SECRET=your-secret
+```
+
+**See `VOICE_AGENT_SETUP.md` for complete setup guide.**
 
 ### Development & Deployment Workflow
 
@@ -319,6 +382,11 @@ FibreFlow implements **two distinct memory systems**:
 - `ui-module/agent_api.py` - Production FastAPI server
 - `ui-module/chat.html` - Web interface
 
+**Voice Agent**:
+- `voice_agent_grok.py` - Grok realtime voice agent (speech-to-speech)
+- `VOICE_AGENT_SETUP.md` - Complete setup guide with API keys
+- `test_voice_agent_setup.py` - Validation script for voice agent configuration
+
 **Configuration**:
 - `.env` - Environment variables (never commit!)
 - `.env.example` - Template with all required variables
@@ -405,10 +473,17 @@ VF_SERVER_USER=louis
 # WhatsApp Sender Service (for wa-monitor module)
 # CRITICAL: Phone +27 71 155 8396 must be paired to WhatsApp service
 # See WA_MONITOR_SETUP.md for pairing instructions
+
+# Voice Agent (Grok Realtime via LiveKit)
+XAI_API_KEY=xai-...                        # Get from: https://x.ai/api
+LIVEKIT_URL=wss://project.livekit.cloud   # Get from: https://cloud.livekit.io
+LIVEKIT_API_KEY=...                        # LiveKit API credentials
+LIVEKIT_API_SECRET=...                     # LiveKit API secret
 ```
 
 **Server Installation Paths** (VF Server: 100.96.203.105):
-- Production apps: `/srv/data/apps/` (NVMe storage)
+- FibreFlow production: `/srv/data/apps/fibreflow/` (NVMe storage, migrated 2025-12-18)
+- Backup location: `/home/louis/apps/fibreflow.BACKUP_20251218` (old location, kept for reference)
 - Cron scripts: `/srv/scripts/cron/`
 - See `.claude/skills/vf-server/README.md` for complete structure
 
@@ -422,7 +497,34 @@ See `.env.example` for complete list with documentation.
 - **Port**: 8081
 - **Phone**: +27 71 155 8396 (must be paired via WhatsApp Linked Devices)
 - **Session**: Stored in `~/whatsapp-sender/store/whatsapp.db`
-- **Documentation**: See `WA_MONITOR_SETUP.md` for complete setup guide
+- **Documentation**: See `WA_MONITOR_MODULE_DOCUMENTATION.md` for complete module guide
+
+### WA Monitor (Foto Reviews) Module - PRODUCTION READY ✅
+
+**Status**: Fully operational with VLM integration (2025-12-18)
+**URL**: http://100.96.203.105:3005/foto-reviews
+
+**Components**:
+- **VLM Service**: Qwen/Qwen3-VL-8B-Instruct on port 8100 (16K context)
+- **Database**: Neon PostgreSQL `foto_ai_reviews` table (27+ evaluations)
+- **API Endpoints**:
+  - `GET /api/foto-reviews/pending` - List pending reviews (updated to use Neon)
+  - `GET /api/foto-reviews/{dr_number}` - Get review details
+  - `POST /api/foto/evaluate` - Trigger VLM evaluation
+  - `POST /api/foto/feedback` - Send WhatsApp feedback
+- **WhatsApp**: Service on port 8081 with phone paired
+
+**Quick Test**:
+```bash
+# Check system status
+.claude/skills/wa-monitor/scripts/check_status.py
+
+# Trigger evaluation
+.claude/skills/wa-monitor/scripts/trigger_evaluation.py DR1234567
+
+# View pending reviews
+curl "http://100.96.203.105:3005/api/foto-reviews/pending?limit=5"
+```
 
 ## Database Context
 
@@ -1209,6 +1311,7 @@ Frontend → Next.js API (/api/wa-monitor-send-feedback) → WhatsApp Sender (Po
 - `NEON_AGENT_GUIDE.md` - Complete Neon agent documentation
 - `CONVEX_AGENT_GUIDE.md` - Convex agent documentation
 - `agents/vps-monitor/README.md` - VPS monitoring guide
+- `VOICE_AGENT_SETUP.md` - **Voice agent with Grok realtime API setup guide**
 - `WA_MONITOR_SETUP.md` - **WhatsApp Sender service setup and phone pairing guide (CRITICAL for wa-monitor)**
 - `WA_DR_QUICKSTART.md` - WA DR monitoring system quickstart
 - `WA_FEEDBACK_FIX_DEPLOYMENT.md` - WhatsApp feedback fix deployment
