@@ -1,6 +1,10 @@
 import os
 import sys
-sys.path.append('/home/louisdup/Agents/claude/harness/shared')
+
+# Explicit path to shared directory
+SHARED_DIR = '/home/louisdup/Agents/claude/harness/shared'
+if SHARED_DIR not in sys.path:
+    sys.path.insert(0, SHARED_DIR)
 
 from base_agent import BaseAgent
 from typing import List, Dict, Any
