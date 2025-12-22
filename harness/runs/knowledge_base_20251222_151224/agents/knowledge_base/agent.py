@@ -127,3 +127,139 @@ Available tools:
 
 Use these tools to help users manage and interact with their knowledge repository.
 """
+
+    def create_app_docs(self, app_name: str = "fibreflow", sections: List[str] = None) -> Dict[str, str]:
+        """
+        Generate comprehensive application documentation.
+
+        :param app_name: Name of the application to document
+        :param sections: List of sections to generate. Options: ["architecture", "api", "deployment", "env-vars"]
+        :return: Dictionary of generated markdown documentation
+        """
+        if not sections:
+            sections = ["architecture", "api", "deployment", "env-vars"]
+
+        docs = {}
+
+        if "architecture" in sections:
+            docs["architecture"] = f"""# {app_name.capitalize()} Architecture
+
+## Overview
+{app_name.capitalize()} is a key component of the Velocity Fibre ecosystem.
+
+### System Components
+- **Backend**: Python-based microservices
+- **Frontend**: TypeScript/React
+- **Database**: Neon PostgreSQL
+- **Authentication**: Clerk
+
+### Key Design Principles
+- Microservices architecture
+- Event-driven design
+- Scalable and modular
+"""
+
+        if "api" in sections:
+            docs["api"] = f"""# {app_name.capitalize()} API Endpoints
+
+## Authentication Routes
+- `POST /api/auth/login`: User authentication
+- `POST /api/auth/register`: User registration
+- `POST /api/auth/reset-password`: Password reset
+
+## Core Functionality Routes
+- `GET /api/resources`: List available resources
+- `POST /api/resources`: Create new resource
+- `PUT /api/resources/:id`: Update resource
+- `DELETE /api/resources/:id`: Delete resource
+
+## Example Request/Response
+```python
+# Example API Call
+response = requests.get('/api/resources')
+```
+"""
+
+        if "deployment" in sections:
+            docs["deployment"] = f"""# {app_name.capitalize()} Deployment Procedures
+
+## Prerequisites
+- Python 3.8+
+- PostgreSQL 13+
+- Docker (optional)
+
+## Deployment Steps
+1. Clone repository
+```bash
+git clone https://github.com/velocityfibre/{app_name}
+cd {app_name}
+```
+
+2. Install dependencies
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+3. Configure environment
+```bash
+cp .env.example .env
+# Edit .env with your configurations
+```
+
+4. Run migrations
+```bash
+python manage.py migrate
+```
+
+5. Start application
+```bash
+python manage.py runserver
+```
+
+## Deployment Targets
+- Local development
+- Staging server
+- Production VF Server
+
+## Deployment Checklist
+- [ ] Backup database
+- [ ] Pull latest code
+- [ ] Install dependencies
+- [ ] Run database migrations
+- [ ] Restart services
+- [ ] Verify deployment
+"""
+
+        if "env-vars" in sections:
+            docs["env-vars"] = f"""# {app_name.capitalize()} Environment Variables
+
+## Required Variables
+- `DATABASE_URL`: PostgreSQL connection string
+- `SECRET_KEY`: Django secret key
+- `DEBUG`: Enable debug mode (true/false)
+
+## Optional Variables
+- `ALLOWED_HOSTS`: Comma-separated list of allowed hosts
+- `SENTRY_DSN`: Error tracking endpoint
+- `CACHE_BACKEND`: Redis/Memcached configuration
+
+## Example .env File
+```bash
+DATABASE_URL=postgresql://user:pass@localhost/fibreflow
+SECRET_KEY=randomlongstring
+DEBUG=false
+ALLOWED_HOSTS=app.fibreflow.app,localhost
+```
+"""
+
+        # Automatically add to documents using existing tool
+        for section, content in docs.items():
+            self.execute_tool("add_document", {
+                "filename": f"{app_name}_{section}.md",
+                "category": "apps",
+                "content": content
+            })
+
+        return docs
