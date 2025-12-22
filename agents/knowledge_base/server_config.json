@@ -1,0 +1,31 @@
+{
+    "hostinger": {
+        "hostname": "app.fibreflow.app",
+        "ip_address": "100.96.203.105",
+        "services": [
+            "nginx",
+            "pm2",
+            "cloudflare-tunnel"
+        ],
+        "ports": {
+            "http": 80,
+            "https": 443,
+            "pm2_dashboard": 9615
+        }
+    },
+    "vf-server": {
+        "hostname": "vf-main-server",
+        "ip_address": "100.96.203.106", 
+        "services": [
+            "fibreflow",
+            "whatsapp-monitor",
+            "qfieldcloud",
+            "tailscale"
+        ],
+        "ports": {
+            "fibreflow": 3000,
+            "whatsapp": 5000,
+            "qfieldcloud": 8080
+        }
+    }
+}
