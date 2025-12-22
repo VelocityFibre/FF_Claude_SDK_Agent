@@ -11,6 +11,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **https://vf.fibreflow.app/downloads** - APK downloads (VF Server via Tunnel)
 - **https://support.fibreflow.app** - Support portal (VF Server via Tunnel)
 
+**Development Tools** (VF Server):
+- **http://100.96.203.105:3005/shadcn-enhanced-v2-demo.html** - shadcn/ui Interactive Playground
+  - Visual design system configurator for shadcn/ui components
+  - Test 28+ interactive components (dialogs, dropdowns, forms, tabs, etc.)
+  - Customize themes, fonts, spacing, shadows, animations in real-time
+  - Export CSS configuration for production use
+  - File: `/srv/data/apps/fibreflow/public/shadcn-enhanced-v2-demo.html`
+
 **Direct Access** (for troubleshooting):
 - Hostinger VPS: 72.60.17.245 (srv1092611.hstgr.cloud, Lithuania)
 - VF Server: 100.96.203.105:3005 (velo-server via Tailscale)
@@ -77,13 +85,46 @@ docker logs -f qfieldcloud-worker
 # Build time: ~15 minutes due to geospatial dependencies (GDAL, GEOS)
 ```
 
+### QFieldCloud Monitoring Dashboard
+```bash
+# Start monitoring dashboard (local QFieldCloud)
+cd .claude/skills/qfieldcloud/dashboard
+./monitor_server.py
+# Visit: http://localhost:8888
+
+# OR: Monitor remote QFieldCloud on Hostinger VPS
+./monitor_server_hostinger.py
+# Visit: http://localhost:8888
+
+# Safe testing without affecting services
+xdg-open test_dashboard.html
+
+# Run automated functionality tests
+./test_functionality.py
+
+# Features:
+# - Real-time service status (Worker, DB, Cache, API, Monitor)
+# - Manual restart buttons (only visible when services fail)
+# - Auto-refresh every 30 seconds
+# - Activity log with color-coded messages
+# - Queue metrics and worker health stats
+
+# Systemd Services (auto-start on boot):
+# - qfield-worker-monitor.service - Background health checks (60s intervals)
+# - Auto-restarts worker after 3 consecutive failures
+# - Logs: /var/log/qfield_worker_monitor.log
+
+# Dashboard Documentation:
+# - .claude/skills/qfieldcloud/dashboard/RESTART_FUNCTIONALITY.md
+```
+
 ### Development
 ```bash
 # Activate virtual environment (always required)
 source venv/bin/activate
 
 # Run Neon agent demo (interactive)
-./venv/bin/python3 demo_neon_agent.py
+./venv/bin/python3 tests/demos/demo_neon_agent.py
 
 # Run VPS monitor agent
 cd agents/vps-monitor && ../../venv/bin/python3 demo.py
@@ -111,11 +152,39 @@ npx convex dev
 ### Production Deployment
 ```bash
 # Deploy Superior Agent Brain API
-cd deploy && ./deploy_brain.sh
+cd deployment && ./deploy_brain.sh
 
 # Run FastAPI agent server
 ./venv/bin/python3 ui-module/agent_api.py
 ```
+
+### Automated Sync to Production Servers
+
+**Quick Sync Commands**:
+```bash
+# Sync docs to both servers (safe, fast)
+./sync-to-hostinger              # Hostinger VPS (app.fibreflow.app)
+scp CLAUDE.md louis@100.96.203.105:/srv/data/apps/fibreflow/  # VF Server
+
+# Full deployment to Hostinger (with code)
+./sync-to-hostinger --code --restart  # Sync everything + restart PM2
+
+# Check production status
+.claude/skills/hostinger-vps/scripts/check_status.py  # Hostinger status
+sudo systemctl status fibreflow                       # VF Server status (via SSH)
+```
+
+**Hostinger VPS Management** (via `.claude/skills/hostinger-vps/`):
+- **sync_all.py**: Sync docs/code with options (--code, --restart)
+- **check_status.py**: Check PM2, ports, disk, memory
+- **execute.py**: Run any command on Hostinger
+- **Location**: `/var/www/fibreflow/`
+- **Process**: PM2 `fibreflow-prod`
+
+**VF Server Management** (via `.claude/skills/vf-server/`):
+- **execute.py**: Run commands on VF Server
+- **Location**: `/srv/data/apps/fibreflow/`
+- **Process**: systemd `fibreflow.service`
 
 ### Voice Agent (Grok Realtime)
 ```bash
@@ -136,7 +205,7 @@ cd deploy && ./deploy_brain.sh
 # LIVEKIT_API_SECRET=your-secret
 ```
 
-**See `VOICE_AGENT_SETUP.md` for complete setup guide.**
+**See `docs/deployment/VOICE_AGENT_SETUP.md` for complete setup guide.**
 
 ### Development & Deployment Workflow
 
@@ -202,6 +271,15 @@ tail -f logs/fibreflow_errors.log
 # Generate performance report
 ./venv/bin/python3 -c "from metrics.collector import get_collector; \
   print(get_collector().generate_report())"
+
+# View work log (git-based activity tracking)
+./scripts/work-log               # Terminal view - last 7 days
+./scripts/work-log 1             # Today only
+./scripts/work-log 30            # Last month
+
+# Work Log Web UI
+./scripts/start-work-log-ui      # Start web UI server on port 8001
+# Then visit: http://localhost:8001/work-log
 ```
 
 **Logging**:
@@ -226,6 +304,48 @@ tail -f logs/fibreflow_errors.log
 - Skills vs Agents comparison
 - Database query performance
 - Memory footprint analysis
+
+### Work Log System
+
+**Git-Based Activity Tracking** - Automatic work logging from git commits with zero maintenance.
+
+**Components**:
+- `scripts/work-log` - Terminal-based viewer with color coding
+- `scripts/work-log-json` - JSON output for API consumption
+- `api/work_log_api.py` - FastAPI server for web UI
+- `public/work-log.html` - Clean black/white web interface
+- `scripts/start-work-log-ui` - One-command startup script
+
+**Usage**:
+```bash
+# Terminal view (instant, no server needed)
+./scripts/work-log         # Last 7 days
+./scripts/work-log 1       # Today only
+./scripts/work-log 30      # Last month
+
+# Web UI (better for team viewing)
+./scripts/start-work-log-ui
+# Visit: http://localhost:8001/work-log
+```
+
+**Features**:
+- **Automatic Module Detection**: Categorizes work by analyzing changed files
+- **Zero Maintenance**: Reads git history directly, no manual logging
+- **Multiple Views**: TODAY, 3 DAYS, WEEK, MONTH filters
+- **Auto-Refresh**: Optional 30-second updates in web UI
+- **Color Coding**: Visual distinction between modules
+- **Commit Type Highlighting**: feat/fix/docs/perf prefixes
+
+**Module Categories** (auto-detected):
+- `NEON-AGENT`, `CONVEX-AGENT`, `VPS-MONITOR` - Agent work
+- `VF-SERVER`, `WA-MONITOR` - Server modules
+- `QFIELD` - QFieldCloud sync operations
+- `DOCS` - Documentation updates
+- `TESTS` - Test additions/modifications
+- `DEPLOYMENT` - Deploy scripts and configs
+- `CORE` - General codebase changes
+
+**Why It Works**: Leverages existing git commit discipline (enforced by hooks) to generate meaningful work summaries without additional overhead.
 
 ## Architecture
 
@@ -377,14 +497,14 @@ FibreFlow implements **two distinct memory systems**:
 - `orchestrator/registry.json` - Agent catalog (source of truth)
 
 **Deployment**:
-- `deploy/brain_api.py` - FastAPI wrapper for Superior Agent Brain
-- `deploy/deploy_brain.sh` - Deployment script
+- `deployment/brain_api.py` - FastAPI wrapper for Superior Agent Brain
+- `deployment/deploy_brain.sh` - Deployment script
 - `ui-module/agent_api.py` - Production FastAPI server
 - `ui-module/chat.html` - Web interface
 
 **Voice Agent**:
 - `voice_agent_grok.py` - Grok realtime voice agent (speech-to-speech)
-- `VOICE_AGENT_SETUP.md` - Complete setup guide with API keys
+- `docs/deployment/VOICE_AGENT_SETUP.md` - Complete setup guide with API keys
 - `test_voice_agent_setup.py` - Validation script for voice agent configuration
 
 **Configuration**:
@@ -472,7 +592,7 @@ VF_SERVER_USER=louis
 
 # WhatsApp Sender Service (for wa-monitor module)
 # CRITICAL: Phone +27 71 155 8396 must be paired to WhatsApp service
-# See WA_MONITOR_SETUP.md for pairing instructions
+# See docs/deployment/WA_MONITOR_SETUP.md for pairing instructions
 
 # Voice Agent (Grok Realtime via LiveKit)
 XAI_API_KEY=xai-...                        # Get from: https://x.ai/api
@@ -497,19 +617,21 @@ See `.env.example` for complete list with documentation.
 - **Port**: 8081
 - **Phone**: +27 71 155 8396 (must be paired via WhatsApp Linked Devices)
 - **Session**: Stored in `~/whatsapp-sender/store/whatsapp.db`
-- **Documentation**: See `WA_MONITOR_MODULE_DOCUMENTATION.md` for complete module guide
+- **Documentation**: See `docs/deployment/WA_MONITOR_MODULE_DOCUMENTATION.md` for complete module guide
 
 ### WA Monitor (Foto Reviews) Module - PRODUCTION READY ✅
 
-**Status**: Fully operational with VLM integration (2025-12-18)
+**Status**: Fully operational with VLM integration (2025-12-19)
 **URL**: http://100.96.203.105:3005/foto-reviews
+**Last Updated**: 2025-12-19 - Removed Antigravity API, all endpoints now use direct Neon queries
 
 **Components**:
 - **VLM Service**: Qwen/Qwen3-VL-8B-Instruct on port 8100 (16K context)
 - **Database**: Neon PostgreSQL `foto_ai_reviews` table (27+ evaluations)
-- **API Endpoints**:
-  - `GET /api/foto-reviews/pending` - List pending reviews (updated to use Neon)
+- **API Endpoints** (All use direct Neon database queries):
+  - `GET /api/foto-reviews/pending` - List pending reviews
   - `GET /api/foto-reviews/{dr_number}` - Get review details
+  - `GET /api/foto-reviews/{dr_number}/history` - Get review history (stub)
   - `POST /api/foto/evaluate` - Trigger VLM evaluation
   - `POST /api/foto/feedback` - Send WhatsApp feedback
 - **WhatsApp**: Service on port 8081 with phone paired
@@ -524,7 +646,12 @@ See `.env.example` for complete list with documentation.
 
 # View pending reviews
 curl "http://100.96.203.105:3005/api/foto-reviews/pending?limit=5"
+
+# Get specific review
+curl "http://100.96.203.105:3005/api/foto-reviews/DR1733758"
 ```
+
+**Note**: Antigravity API has been completely removed. All endpoints now query Neon database directly.
 
 ## Database Context
 
@@ -1019,6 +1146,15 @@ Use Agent Harness when you want FibreFlow to build the agent overnight. Use Agen
 
 Agent OS is a structured context system that transforms AI coding from reactive guesswork to proactive specification-driven development. It provides a 3-layer context architecture that ensures consistent, standards-compliant code across all agents.
 
+**Role in FibreFlow**: Agent OS is for **PLANNING** (defining what to build), while FibreFlow Harness is for **EXECUTION** (building it autonomously).
+
+```
+Agent OS (Planning)     →  FibreFlow Harness (Building)  →  Production
+/plan-product              ./harness/runner.py               Deployed Agent
+/shape-spec                --parallel 6 (4-6x faster)
+/write-spec → spec.md      Auto-Claude Phases 1+2+3
+```
+
 ### 3-Layer Context System
 
 **1. Standards Layer**
@@ -1053,7 +1189,7 @@ Agent OS is a structured context system that transforms AI coding from reactive 
 - `/implement-tasks` - Sequential execution (faster, simpler)
 - `/orchestrate-tasks` - Generate orchestration.yml for multi-agent control
 
-**Quick fixes**: For simple bugs/tweaks, skip Agent OS commands and prompt Claude directly.
+**Note**: Agent OS `/implement-tasks` is for manual development. For autonomous overnight builds, use FibreFlow Harness instead (see decision tree below).
 
 ### Integration with FibreFlow
 
@@ -1074,17 +1210,161 @@ Specialized Agents (Execution)
 - **Standards Enforcement**: Only framework natively using Claude Code skills
 - **Team Consistency**: Shared configuration across developers
 
-**When to Use Agent OS**:
-- Creating new specialized agents (define specs first)
-- Building greenfield projects (full workflow shines here)
-- Onboarding team members (standards documentation)
-- Adding major features (product/feature specs)
-- Establishing coding standards (standards layer)
+### When to Use What: Decision Tree
 
-**When NOT to Use**:
-- Quick bug fixes or color changes (overhead > value)
-- Simple one-off queries
-- Emergency production issues (use direct agent access)
+**Starting a new development task?** Follow this decision tree:
+
+```
+Need to build something?
+    ↓
+┌──────────────────────────────────────────────┐
+│ 1. Is the requirement well-defined?         │
+└──────────────────────────────────────────────┘
+    ↓
+    ├─ NO → Use Agent OS for Planning
+    │        ├─ /plan-product (define vision)
+    │        ├─ /shape-spec (scope MVP via Q&A)
+    │        └─ /write-spec (generate harness/specs/agent_spec.md)
+    │        ↓
+    │        Spec created → Continue below ↓
+    │
+    └─ YES → Have a formal spec?
+               ↓
+               ├─ NO → Write spec first
+               │        (Use Agent OS or write manually)
+               │        ↓
+               │        Spec created → Continue below ↓
+               │
+               └─ YES → How many features?
+                          ↓
+                          ├─ 10+ features → Use FibreFlow Harness
+                          │                 ./harness/runner.py --agent name --parallel 6
+                          │                 (Auto-Claude Phases 1+2+3: Safe + Quality + Speed)
+                          │                 Expected: Overnight autonomous build
+                          │
+                          ├─ 3-9 features → Consider FibreFlow Harness
+                          │                 OR implement directly (faster for small scope)
+                          │
+                          └─ 1-2 features → Implement directly
+                                            (Harness overhead not worth it)
+```
+
+**Quick Reference Table**:
+
+| Scenario | Tool | Reason |
+|----------|------|--------|
+| **"I want a SharePoint agent"** (vague) | Agent OS | Need structured planning |
+| **Have spec, 50 features** | FibreFlow Harness | Autonomous build overnight |
+| **Have spec, 2 features** | Direct development | Faster than harness setup |
+| **Bug fix** | Direct development | 30 seconds vs 30 minutes |
+| **Emergency hotfix** | Direct development | Speed > process |
+| **New major feature** | Agent OS → Harness | Plan first, build second |
+
+**When to Use Agent OS** (Planning Phase):
+- ✅ Creating new specialized agents (define specs first)
+- ✅ Building greenfield projects (full workflow shines here)
+- ✅ Onboarding team members (standards documentation)
+- ✅ Adding major features (product/feature specs)
+- ✅ Requirement is vague or unclear
+- ✅ Need to scope MVP interactively
+
+**When to Use FibreFlow Harness** (Execution Phase):
+- ✅ Have a well-defined spec (harness/specs/agent_spec.md)
+- ✅ Building complete agent (10+ features)
+- ✅ Want overnight autonomous build
+- ✅ Want 4-6x speedup (Phase 3 parallel execution)
+- ✅ Want safety (Phase 1 worktrees) + quality (Phase 2 self-healing)
+
+**When to Use Direct Development** (No Tools):
+- ✅ Quick bug fixes or typos
+- ✅ Color/style changes
+- ✅ Emergency production issues
+- ✅ 1-2 simple features
+- ✅ Exploring/prototyping (spec would slow discovery)
+
+### Complete Workflow Example
+
+**Scenario**: Building a new Microsoft Teams agent for deployment notifications
+
+**Step 1: Planning (Agent OS) - 30 minutes**
+
+```bash
+# Initial request (too vague for harness)
+# "I need something that posts to Teams"
+
+# Use Agent OS to define requirements
+/plan-product
+# Interactive Q&A clarifies:
+# - Posts deployment notifications to specific channels
+# - Supports channel selection
+# - Handles auth with OAuth2
+
+/shape-spec
+# Interactive Q&A scopes MVP:
+# - 3 core tools: post_message, list_channels, authenticate
+# - OAuth2 flow with token refresh
+# - Rate limit handling
+# - Success: Message posted with confirmation
+
+/write-spec
+# Output: specs/teams_spec.md (formal specification)
+```
+
+**Step 2: Copy Spec to FibreFlow**
+
+```bash
+# If using standalone Agent OS
+cp ~/agent-os/specs/teams_spec.md harness/specs/teams_spec.md
+
+# If using Agent OS within FibreFlow (recommended)
+# Spec already in harness/specs/
+```
+
+**Step 3: Execution (FibreFlow Harness) - Overnight**
+
+```bash
+# Start autonomous build with Auto-Claude phases
+./harness/runner.py --agent teams --parallel 6
+
+# What happens overnight:
+# - Phase 1 (Worktrees): All work in isolated .worktrees/
+# - Phase 2 (Self-Healing): Auto-fixes syntax/import/logic errors
+# - Phase 3 (Parallel): 6 features developed simultaneously
+# - Result: 90% completion rate, 4-6x faster than sequential
+
+# Wake up to:
+# ✅ agents/teams/agent.py (complete implementation)
+# ✅ tests/test_teams.py (full test coverage)
+# ✅ demo_teams.py (working demonstration)
+# ✅ agents/teams/README.md (documentation)
+# ✅ orchestrator/registry.json (auto-registered)
+```
+
+**Step 4: Test and Deploy**
+
+```bash
+# Test the agent
+./venv/bin/pytest tests/test_teams.py -v
+./venv/bin/python3 demo_teams.py
+
+# Register environment variables
+echo "TEAMS_TENANT_ID=..." >> .env
+echo "TEAMS_CLIENT_ID=..." >> .env
+
+# Deploy to production
+/deployment/deploy teams
+
+# Or use orchestrator
+./venv/bin/python3 orchestrator/orchestrator.py
+# Query: "Post deployment notification to Teams"
+```
+
+**Time Investment vs Value**:
+- Agent OS planning: 30 minutes
+- FibreFlow build: Overnight (unattended)
+- Testing/deployment: 30 minutes
+- **Total hands-on time: 1 hour**
+- **Result: Production-ready agent with tests and docs**
 
 ### Configuration
 
@@ -1109,12 +1389,42 @@ to each agent's markdown file in `.claude/agents/`.
 
 **Bug Fix Overhead**: No dedicated `/fix-bug` command - full workflow is overkill for typos/minor tweaks.
 
-### Agent OS vs. Orchestrator
+### Agent OS vs. Harness vs. Orchestrator
 
-**Agent OS** = Development-time guidance (how to build agents)
-**Orchestrator** = Runtime routing (which agent to use)
+Three distinct systems work together in the FibreFlow lifecycle:
 
-Both systems work together - Agent OS ensures agents are built consistently, while the orchestrator ensures they're used correctly.
+**Agent OS** = **Planning** (What to build)
+- Interactive Q&A to define requirements
+- Generates formal specifications
+- Used BEFORE building
+- Output: harness/specs/agent_spec.md
+
+**FibreFlow Harness** = **Building** (How to build it)
+- Autonomous overnight execution
+- Auto-Claude Phases 1+2+3 (Safe + Quality + Speed)
+- Used AFTER planning
+- Input: specs/agent_spec.md → Output: Complete agent
+
+**Orchestrator** = **Routing** (Which agent to use)
+- Runtime task routing to specialized agents
+- Keyword-based agent selection
+- Used IN PRODUCTION
+- Input: User query → Output: Routed to correct agent
+
+**Complete Lifecycle**:
+```
+Agent OS        →  FibreFlow Harness    →  Orchestrator       →  Production
+(Planning)         (Building)              (Routing)             (Usage)
+────────────────────────────────────────────────────────────────────────────
+/plan-product      ./harness/runner.py     orchestrator.py       User queries
+/shape-spec        --parallel 6            registry.json         Auto-routing
+/write-spec        Phases 1+2+3            Keyword matching      Agent execution
+
+Output:            Output:                 Output:               Output:
+spec.md            Complete agent          Selected agent        Results
+```
+
+All three work together - Agent OS plans, Harness builds, Orchestrator routes.
 
 ### Development Philosophy
 
@@ -1280,7 +1590,7 @@ Frontend → Next.js API (/api/wa-monitor-send-feedback) → WhatsApp Sender (Po
                                                    WhatsApp Groups (by project)
 ```
 
-**CRITICAL**: The WhatsApp Sender service requires phone +27 71 155 8396 to be paired via WhatsApp "Linked Devices" feature. See `WA_MONITOR_SETUP.md` for pairing instructions.
+**CRITICAL**: The WhatsApp Sender service requires phone +27 71 155 8396 to be paired via WhatsApp "Linked Devices" feature. See `docs/deployment/WA_MONITOR_SETUP.md` for pairing instructions.
 
 ## Common Pitfalls
 
@@ -1290,7 +1600,7 @@ Frontend → Next.js API (/api/wa-monitor-send-feedback) → WhatsApp Sender (Po
 4. **SSH keys**: VPS Monitor and VF Server skills use SSH keys in `~/.ssh/` (never commit keys to repo)
 5. **Context limits**: Superior Agent Brain uses 200K token context window
 6. **Neon sync**: Run `sync_neon_to_convex.py` after Neon schema changes
-7. **WhatsApp feedback failing**: Check that WhatsApp Sender service is running and phone +27 71 155 8396 is paired. Error "the store doesn't contain a device JID" means phone is not paired. See `WA_MONITOR_SETUP.md`
+7. **WhatsApp feedback failing**: Check that WhatsApp Sender service is running and phone +27 71 155 8396 is paired. Error "the store doesn't contain a device JID" means phone is not paired. See `docs/deployment/WA_MONITOR_SETUP.md`
 
 ## Documentation Structure
 
@@ -1311,10 +1621,10 @@ Frontend → Next.js API (/api/wa-monitor-send-feedback) → WhatsApp Sender (Po
 - `NEON_AGENT_GUIDE.md` - Complete Neon agent documentation
 - `CONVEX_AGENT_GUIDE.md` - Convex agent documentation
 - `agents/vps-monitor/README.md` - VPS monitoring guide
-- `VOICE_AGENT_SETUP.md` - **Voice agent with Grok realtime API setup guide**
-- `WA_MONITOR_SETUP.md` - **WhatsApp Sender service setup and phone pairing guide (CRITICAL for wa-monitor)**
-- `WA_DR_QUICKSTART.md` - WA DR monitoring system quickstart
-- `WA_FEEDBACK_FIX_DEPLOYMENT.md` - WhatsApp feedback fix deployment
+- `docs/deployment/VOICE_AGENT_SETUP.md` - **Voice agent with Grok realtime API setup guide**
+- `docs/deployment/WA_MONITOR_SETUP.md` - **WhatsApp Sender service setup and phone pairing guide (CRITICAL for wa-monitor)**
+- `docs/deployment/WA_DR_QUICKSTART.md` - WA DR monitoring system quickstart
+- `docs/deployment/WA_FEEDBACK_FIX_DEPLOYMENT.md` - WhatsApp feedback fix deployment
 
 **Architecture**:
 - `DOMAIN_MEMORY_GUIDE.md` - **Domain memory patterns and philosophy** (read this first!)
@@ -1413,4 +1723,4 @@ Is this important to remember?
 - **VF Server Paths**: Production apps deployed to `/srv/data/apps/` (NVMe storage). FibreFlow at `/srv/data/apps/fibreflow/` (migrated 2025-12-17). See `docs/OPERATIONS_LOG.md` for procedures.
 - **Convex Deployment**: Always deploy Convex functions before testing agents that use them.
 - **Documentation**: Important changes documented in CHANGELOG.md (what), docs/OPERATIONS_LOG.md (how), and docs/DECISION_LOG.md (why). See `docs/DOCUMENTATION_FRAMEWORK.md` for guidelines.
-- **WhatsApp Service**: **CRITICAL** - The wa-monitor feedback feature (https://app.fibreflow.app/wa-monitor) requires WhatsApp Sender service running on VF server with phone +27 71 155 8396 paired. Service runs on port 8081. Session stored in `~/whatsapp-sender/store/whatsapp.db` - **NEVER DELETE**. See `WA_MONITOR_SETUP.md` for complete setup and troubleshooting.
+- **WhatsApp Service**: **CRITICAL** - The wa-monitor feedback feature (https://app.fibreflow.app/wa-monitor) requires WhatsApp Sender service running on VF server with phone +27 71 155 8396 paired. Service runs on port 8081. Session stored in `~/whatsapp-sender/store/whatsapp.db` - **NEVER DELETE**. See `docs/deployment/WA_MONITOR_SETUP.md` for complete setup and troubleshooting.
