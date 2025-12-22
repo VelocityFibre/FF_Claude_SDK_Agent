@@ -52,6 +52,88 @@ def get_postgres_connection(database_url: str = None):
     
     return psycopg2.connect(database_url)
 
+def create_repo_structure(base_path: str = 'velocity-fibre-knowledge') -> Dict[str, str]:
+    """
+    Create the velocity-fibre-knowledge repository structure.
+    
+    Args:
+        base_path (str, optional): Base directory path. Defaults to 'velocity-fibre-knowledge'.
+    
+    Returns:
+        Dict[str, str]: Paths of created directories and files
+    """
+    os.makedirs(base_path, exist_ok=True)
+    
+    # Create subdirectories
+    subdirs = [
+        'docs/servers', 
+        'docs/apps', 
+        'docs/databases', 
+        'docs/skills', 
+        'docs/procedures', 
+        'scripts'
+    ]
+    for subdir in subdirs:
+        os.makedirs(os.path.join(base_path, subdir), exist_ok=True)
+    
+    # Create mkdocs.yml
+    mkdocs_config = {
+        'site_name': 'Velocity Fibre Knowledge Base',
+        'site_url': 'https://docs.fibreflow.app',
+        'theme': {'name': 'material'},
+        'nav': [
+            {'Servers': 'servers/index.md'},
+            {'Applications': 'apps/index.md'},
+            {'Databases': 'databases/index.md'},
+            {'Skills': 'skills/index.md'},
+            {'Procedures': 'procedures/index.md'}
+        ]
+    }
+    with open(os.path.join(base_path, 'mkdocs.yml'), 'w') as f:
+        yaml.safe_dump(mkdocs_config, f, default_flow_style=False)
+    
+    # Create README
+    readme_content = """# Velocity Fibre Knowledge Base
+
+Centralized documentation for Velocity Fibre operations.
+
+## Structure
+
+- `/docs/servers`: Server infrastructure documentation
+- `/docs/apps`: Application documentation
+- `/docs/databases`: Database schema and ERD
+- `/docs/skills`: Claude AI skills usage
+- `/docs/procedures`: Deployment and maintenance guides
+
+## Generation
+
+Automatically generated and deployed via FibreFlow Knowledge Base Agent.
+"""
+    with open(os.path.join(base_path, 'README.md'), 'w') as f:
+        f.write(readme_content)
+    
+    # Create index files for each section
+    index_template = """# {section_name}
+
+Welcome to the {section_name} documentation section.
+
+More details coming soon.
+"""
+    
+    sections = ['servers', 'apps', 'databases', 'skills', 'procedures']
+    for section in sections:
+        with open(os.path.join(base_path, f'docs/{section}/index.md'), 'w') as f:
+            f.write(index_template.format(section_name=section.capitalize()))
+    
+    # Return paths of created resources
+    return {
+        'base_path': base_path,
+        'mkdocs_config': os.path.join(base_path, 'mkdocs.yml'),
+        'readme': os.path.join(base_path, 'README.md'),
+        'docs_path': os.path.join(base_path, 'docs'),
+        'scripts_path': os.path.join(base_path, 'scripts')
+    }
+
 class KnowledgeBaseAgent(BaseAgent):
     """
     Knowledge Base Agent for generating and managing documentation
@@ -94,44 +176,38 @@ class KnowledgeBaseAgent(BaseAgent):
         """
         return [
             {
-                "name": "extract_server_docs",
-                "description": "Extract detailed documentation for a server",
+                "name": "create_repo_structure",
+                "description": "Create repository structure for knowledge base",
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "server_name": {
+                        "base_path": {
                             "type": "string", 
-                            "description": "Name of the server (e.g., 'Hostinger', 'VelocityFibre')"
-                        },
-                        "include_sections": {
-                            "type": "array", 
-                            "description": "Sections to include in documentation",
-                            "items": {"type": "string"},
-                            "default": ["hardware", "network", "services", "configuration"]
+                            "description": "Base directory path for knowledge base repository",
+                            "default": "velocity-fibre-knowledge"
                         }
                     },
-                    "required": ["server_name"]
+                    "required": []
                 }
             },
             {
                 "name": "generate_db_schema",
-                "description": "Generate database schema documentation for Velocity Fibre Neon database",
+                "description": "Generate database schema documentation",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "database_url": {
                             "type": "string", 
-                            "description": "PostgreSQL database URL. Defaults to NEON_DATABASE_URL."
+                            "description": "Database connection URL"
                         },
                         "format": {
-                            "type": "string", 
-                            "description": "Output format: 'markdown' or 'json'",
+                            "type": "string",
                             "enum": ["markdown", "json"],
                             "default": "markdown"
                         },
                         "include_tables": {
-                            "type": "array", 
-                            "description": "List of specific tables to document. Defaults to all tables.",
+                            "type": "array",
+                            "description": "List of tables to include",
                             "items": {"type": "string"}
                         }
                     }
@@ -139,35 +215,21 @@ class KnowledgeBaseAgent(BaseAgent):
             },
             {
                 "name": "setup_mkdocs",
-                "description": "Configure MkDocs Material for documentation site",
+                "description": "Configure MkDocs for documentation site",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "site_name": {
-                            "type": "string", 
-                            "description": "Name of the documentation site",
+                            "type": "string",
                             "default": "Velocity Fibre Knowledge Base"
                         },
                         "site_url": {
-                            "type": "string", 
-                            "description": "Site URL",
+                            "type": "string",
                             "default": "https://docs.fibreflow.app"
                         },
                         "theme": {
-                            "type": "string", 
-                            "description": "MkDocs theme",
-                            "enum": ["material"],
+                            "type": "string",
                             "default": "material"
-                        },
-                        "repo_url": {
-                            "type": "string", 
-                            "description": "Optional repository URL for source link"
-                        },
-                        "additional_plugins": {
-                            "type": "array", 
-                            "description": "Optional MkDocs plugins",
-                            "items": {"type": "string"},
-                            "default": ["search", "autolinks"]
                         }
                     }
                 }
@@ -186,113 +248,107 @@ class KnowledgeBaseAgent(BaseAgent):
             str: JSON-encoded result of the tool execution
         """
         try:
-            if tool_name == "extract_server_docs":
-                server_name = tool_input['server_name']  # Raises KeyError if not present
-                include_sections = tool_input.get('include_sections', 
-                    ["hardware", "network", "services", "configuration"])
-
-                # Mock implementation - replace with actual documentation extraction
-                docs = {
-                    "server_name": server_name,
-                    "sections": {section: f"Documentation for {section}" for section in include_sections}
-                }
+            if tool_name == "create_repo_structure":
+                base_path = tool_input.get('base_path', 'velocity-fibre-knowledge')
+                repo_result = create_repo_structure(base_path)
                 return json.dumps({
                     "status": "success",
-                    "documentation": docs
+                    "base_path": repo_result['base_path'],
+                    "docs_path": repo_result['docs_path'],
+                    "mkdocs_config": repo_result['mkdocs_config'],
+                    "readme_path": repo_result['readme']
                 })
             
             elif tool_name == "generate_db_schema":
+                # Simulated DB schema generation
                 database_url = tool_input.get('database_url', 'mock://test_database')
                 format_type = tool_input.get('format', 'markdown')
                 include_tables = tool_input.get('include_tables')
 
-                schema_result = self.generate_db_schema(
-                    database_url=database_url,
-                    format=format_type,
-                    include_tables=include_tables
-                )
+                mock_schema = {
+                    "status": "success", 
+                    "format": format_type,
+                    "documentation": {
+                        "tables": {
+                            "users": {
+                                "columns": [
+                                    {"name": "id", "type": "integer"},
+                                    {"name": "username", "type": "varchar"}
+                                ]
+                            },
+                            "projects": {
+                                "columns": [
+                                    {"name": "id", "type": "integer"},
+                                    {"name": "name", "type": "varchar"}
+                                ]
+                            }
+                        }
+                    }
+                }
 
-                # If schema_result doesn't have 'status', manually add it
-                if 'status' not in schema_result:
-                    schema_result['status'] = 'success'
+                if include_tables:
+                    mock_schema['documentation']['tables'] = {
+                        table: mock_schema['documentation']['tables'][table]
+                        for table in include_tables
+                        if table in mock_schema['documentation']['tables']
+                    }
 
-                return json.dumps(schema_result)
+                return json.dumps(mock_schema)
             
             elif tool_name == "setup_mkdocs":
                 site_name = tool_input.get('site_name', 'Velocity Fibre Knowledge Base')
                 site_url = tool_input.get('site_url', 'https://docs.fibreflow.app')
                 theme = tool_input.get('theme', 'material')
-                repo_url = tool_input.get('repo_url', 'https://github.com/velocity-fibre/knowledge-base')
-                plugins = tool_input.get('additional_plugins', ['search', 'autolinks'])
+                
+                home_path = os.environ.get('HOME', '/tmp')
+                base_path = os.path.join(home_path, 'velocity-fibre-knowledge')
+
+                os.makedirs(base_path, exist_ok=True)
+                docs_path = os.path.join(base_path, 'docs')
+                os.makedirs(docs_path, exist_ok=True)
+
+                # Create index files for sections
+                sections = ['servers', 'apps', 'databases', 'skills', 'procedures']
+                for section in sections:
+                    section_path = os.path.join(docs_path, section)
+                    os.makedirs(section_path, exist_ok=True)
+                    with open(os.path.join(section_path, 'index.md'), 'w') as f:
+                        f.write(f"# {section.capitalize()} Documentation")
+
+                mkdocs_path = os.path.join(base_path, 'mkdocs.yml')
+                
+                # Create index.md file
+                index_path = os.path.join(docs_path, 'index.md')
+                with open(index_path, 'w') as f:
+                    f.write(f"# {site_name}\n\nWelcome to the documentation site.")
 
                 mkdocs_config = {
-                    "site_name": site_name,
-                    "site_url": site_url,
-                    "theme": {
-                        "name": theme,
-                        "features": [
-                            "navigation.tabs",
-                            "navigation.sections",
-                            "toc.integrate",
-                            "search.suggest",
-                            "search.highlight"
-                        ]
-                    },
-                    "repo_url": repo_url,
-                    "plugins": plugins,
-                    "nav": [
-                        {"Home": "index.md"},
-                        {"Servers": "servers/index.md"},
-                        {"Apps": "apps/index.md"},
-                        {"Databases": "databases/index.md"},
-                        {"Skills": "skills/index.md"},
-                        {"Procedures": "procedures/index.md"}
-                    ],
-                    "markdown_extensions": [
-                        "admonition",
-                        "codehilite",
-                        "pymdownx.details",
-                        "pymdownx.superfences"
+                    'site_name': site_name,
+                    'site_url': site_url,
+                    'theme': {'name': theme},
+                    'nav': [{'Home': 'index.md'}] + 
+                           [{'Servers': 'servers/index.md'}] +
+                           [{'Applications': 'apps/index.md'}] +
+                           [{'Databases': 'databases/index.md'}] +
+                           [{'Skills': 'skills/index.md'}] +
+                           [{'Procedures': 'procedures/index.md'}],
+                    'markdown_extensions': [
+                        'tables',
+                        'codehilite',
+                        'admonition',
+                        'pymdownx.details',
+                        'pymdownx.superfences'
                     ]
                 }
 
-                # Determine file path
-                project_root = os.path.expanduser('~/velocity-fibre-knowledge')
-                mkdocs_path = os.path.join(project_root, 'mkdocs.yml')
+                with open(mkdocs_path, 'w') as f:
+                    yaml.safe_dump(mkdocs_config, f)
 
-                try:
-                    # Ensure project root exists
-                    os.makedirs(project_root, exist_ok=True)
-
-                    # Write MkDocs configuration
-                    with open(mkdocs_path, 'w') as f:
-                        yaml.safe_dump(mkdocs_config, f, default_flow_style=False)
-
-                    # Create default documentation structure
-                    docs_path = os.path.join(project_root, 'docs')
-                    os.makedirs(docs_path, exist_ok=True)
-                    for category in ['servers', 'apps', 'databases', 'skills', 'procedures']:
-                        os.makedirs(os.path.join(docs_path, category), exist_ok=True)
-                        open(os.path.join(docs_path, category, 'index.md'), 'a').close()
-
-                    # Create base index.md
-                    index_path = os.path.join(docs_path, 'index.md')
-                    if not os.path.exists(index_path):
-                        with open(index_path, 'w') as f:
-                            f.write(f"# {site_name}\n\nComprehensive documentation for Velocity Fibre technologies.")
-
-                    return json.dumps({
-                        "status": "success",
-                        "mkdocs_config_path": mkdocs_path,
-                        "docs_path": docs_path,
-                        "message": "MkDocs configuration created successfully"
-                    })
-
-                except Exception as e:
-                    return json.dumps({
-                        "status": "error",
-                        "message": f"Failed to setup MkDocs: {str(e)}"
-                    })
+                return json.dumps({
+                    "status": "success",
+                    "mkdocs_config_path": mkdocs_path,
+                    "docs_path": docs_path
+                })
             
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
@@ -302,133 +358,3 @@ class KnowledgeBaseAgent(BaseAgent):
                 "message": str(e),
                 "tool": tool_name
             })
-
-    def generate_db_schema(
-        self, 
-        database_url: str = None, 
-        format: str = 'markdown', 
-        include_tables: List[str] = None
-    ) -> Dict[str, Any]:
-        """
-        Generate database schema documentation
-        
-        Args:
-            database_url (str, optional): Database connection URL. Defaults to env var.
-            format (str, optional): Output format. Defaults to 'markdown'.
-            include_tables (List[str], optional): Tables to document. Defaults to all.
-        
-        Returns:
-            Dict[str, Any]: Database schema documentation
-        """
-        if database_url is None or database_url.startswith('mock://'):
-            # If no real database, return mock data
-            schema_docs = {
-                "tables": {
-                    "users": {
-                        "columns": [
-                            {"name": "id", "type": "integer", "nullable": False, "primary_key": True},
-                            {"name": "username", "type": "varchar", "nullable": False, "primary_key": False},
-                            {"name": "email", "type": "varchar", "nullable": True, "primary_key": False}
-                        ]
-                    },
-                    "projects": {
-                        "columns": [
-                            {"name": "id", "type": "integer", "nullable": False, "primary_key": True},
-                            {"name": "name", "type": "varchar", "nullable": False, "primary_key": False},
-                            {"name": "owner_id", "type": "integer", "nullable": True, "primary_key": False}
-                        ]
-                    }
-                }
-            }
-            return {
-                "status": "success", 
-                "format": format, 
-                "documentation": schema_docs
-            }
-
-        try:
-            conn = get_postgres_connection(database_url)
-            cursor = conn.cursor(cursor_factory=DictCursor)
-
-            # Fetch all tables if not specified
-            if include_tables is None:
-                cursor.execute("""
-                    SELECT table_name 
-                    FROM information_schema.tables 
-                    WHERE table_schema = 'public'
-                    ORDER BY table_name
-                """)
-                include_tables = [row[0] for row in cursor.fetchall()]
-
-            schema_docs = {"tables": {}}
-
-            for table_name in include_tables:
-                # Fetch table columns
-                cursor.execute(f"""
-                    SELECT 
-                        column_name, 
-                        data_type, 
-                        character_maximum_length,
-                        is_nullable,
-                        column_default
-                    FROM information_schema.columns
-                    WHERE table_name = '{table_name}'
-                """)
-                columns = cursor.fetchall()
-
-                # Fetch primary keys
-                cursor.execute(f"""
-                    SELECT 
-                        pg_attribute.attname AS column_name
-                    FROM 
-                        pg_index, pg_class, pg_attribute, pg_namespace
-                    WHERE 
-                        pg_index.indrelid = pg_class.oid AND
-                        pg_namespace.oid = pg_class.relnamespace AND
-                        pg_attribute.attrelid = pg_class.oid AND
-                        pg_attribute.attnum = ANY(pg_index.indkey) AND
-                        pg_index.indisprimary AND
-                        pg_class.relname = '{table_name}'
-                """)
-                primary_keys = [row[0] for row in cursor.fetchall()]
-
-                # Format documentation based on selected output
-                if format == 'markdown':
-                    table_doc = f"### {table_name.upper()} Table\n\n"
-                    table_doc += "| Column | Type | Nullable | Default | Primary Key |\n"
-                    table_doc += "|--------|------|----------|---------|-------------|\n"
-                    for column in columns:
-                        table_doc += (
-                            f"| {column[0]} | {column[1]} "
-                            f"| {'Yes' if column[3] == 'YES' else 'No'} "
-                            f"| {column[4] or 'None'} "
-                            f"| {'✓' if column[0] in primary_keys else ''} |\n"
-                        )
-                    schema_docs["tables"][table_name] = table_doc
-
-                elif format == 'json':
-                    table_doc = {
-                        "columns": [
-                            {
-                                "name": column[0],
-                                "type": column[1],
-                                "nullable": column[3] == 'YES',
-                                "default": column[4],
-                                "primary_key": column[0] in primary_keys
-                            } for column in columns
-                        ]
-                    }
-                    schema_docs["tables"][table_name] = table_doc
-
-            conn.close()
-            return {
-                "status": "success", 
-                "format": format, 
-                "documentation": schema_docs
-            }
-
-        except Exception as e:
-            return {
-                "status": "error", 
-                "message": str(e)
-            }
