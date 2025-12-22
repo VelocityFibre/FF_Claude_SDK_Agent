@@ -3,6 +3,7 @@ import os
 from typing import List, Dict, Any
 import psycopg2
 from psycopg2.extras import DictCursor
+import yaml
 
 class MockBaseAgent:
     """
@@ -135,6 +136,41 @@ class KnowledgeBaseAgent(BaseAgent):
                         }
                     }
                 }
+            },
+            {
+                "name": "setup_mkdocs",
+                "description": "Configure MkDocs Material for documentation site",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "site_name": {
+                            "type": "string", 
+                            "description": "Name of the documentation site",
+                            "default": "Velocity Fibre Knowledge Base"
+                        },
+                        "site_url": {
+                            "type": "string", 
+                            "description": "Site URL",
+                            "default": "https://docs.fibreflow.app"
+                        },
+                        "theme": {
+                            "type": "string", 
+                            "description": "MkDocs theme",
+                            "enum": ["material"],
+                            "default": "material"
+                        },
+                        "repo_url": {
+                            "type": "string", 
+                            "description": "Optional repository URL for source link"
+                        },
+                        "additional_plugins": {
+                            "type": "array", 
+                            "description": "Optional MkDocs plugins",
+                            "items": {"type": "string"},
+                            "default": ["search", "autolinks"]
+                        }
+                    }
+                }
             }
         ]
 
@@ -181,6 +217,82 @@ class KnowledgeBaseAgent(BaseAgent):
                     schema_result['status'] = 'success'
 
                 return json.dumps(schema_result)
+            
+            elif tool_name == "setup_mkdocs":
+                site_name = tool_input.get('site_name', 'Velocity Fibre Knowledge Base')
+                site_url = tool_input.get('site_url', 'https://docs.fibreflow.app')
+                theme = tool_input.get('theme', 'material')
+                repo_url = tool_input.get('repo_url', 'https://github.com/velocity-fibre/knowledge-base')
+                plugins = tool_input.get('additional_plugins', ['search', 'autolinks'])
+
+                mkdocs_config = {
+                    "site_name": site_name,
+                    "site_url": site_url,
+                    "theme": {
+                        "name": theme,
+                        "features": [
+                            "navigation.tabs",
+                            "navigation.sections",
+                            "toc.integrate",
+                            "search.suggest",
+                            "search.highlight"
+                        ]
+                    },
+                    "repo_url": repo_url,
+                    "plugins": plugins,
+                    "nav": [
+                        {"Home": "index.md"},
+                        {"Servers": "servers/index.md"},
+                        {"Apps": "apps/index.md"},
+                        {"Databases": "databases/index.md"},
+                        {"Skills": "skills/index.md"},
+                        {"Procedures": "procedures/index.md"}
+                    ],
+                    "markdown_extensions": [
+                        "admonition",
+                        "codehilite",
+                        "pymdownx.details",
+                        "pymdownx.superfences"
+                    ]
+                }
+
+                # Determine file path
+                project_root = os.path.expanduser('~/velocity-fibre-knowledge')
+                mkdocs_path = os.path.join(project_root, 'mkdocs.yml')
+
+                try:
+                    # Ensure project root exists
+                    os.makedirs(project_root, exist_ok=True)
+
+                    # Write MkDocs configuration
+                    with open(mkdocs_path, 'w') as f:
+                        yaml.safe_dump(mkdocs_config, f, default_flow_style=False)
+
+                    # Create default documentation structure
+                    docs_path = os.path.join(project_root, 'docs')
+                    os.makedirs(docs_path, exist_ok=True)
+                    for category in ['servers', 'apps', 'databases', 'skills', 'procedures']:
+                        os.makedirs(os.path.join(docs_path, category), exist_ok=True)
+                        open(os.path.join(docs_path, category, 'index.md'), 'a').close()
+
+                    # Create base index.md
+                    index_path = os.path.join(docs_path, 'index.md')
+                    if not os.path.exists(index_path):
+                        with open(index_path, 'w') as f:
+                            f.write(f"# {site_name}\n\nComprehensive documentation for Velocity Fibre technologies.")
+
+                    return json.dumps({
+                        "status": "success",
+                        "mkdocs_config_path": mkdocs_path,
+                        "docs_path": docs_path,
+                        "message": "MkDocs configuration created successfully"
+                    })
+
+                except Exception as e:
+                    return json.dumps({
+                        "status": "error",
+                        "message": f"Failed to setup MkDocs: {str(e)}"
+                    })
             
             return json.dumps({"error": f"Unknown tool: {tool_name}"})
 
