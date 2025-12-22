@@ -1,0 +1,73 @@
+{
+    "fibreflow": {
+        "name": "FibreFlow",
+        "architecture": {
+            "overview": "Multi-agent autonomous documentation system",
+            "components": [
+                "Agent Harness",
+                "BaseAgent",
+                "Orchestrator",
+                "Knowledge Base"
+            ],
+            "design_principles": [
+                "Modular Architecture",
+                "Self-Healing Validation",
+                "Autonomous Feature Implementation"
+            ]
+        },
+        "api": {
+            "base_url": "https://app.fibreflow.app/api/v1",
+            "authentication_method": "Bearer Token in Authorization Header",
+            "endpoints": [
+                {
+                    "name": "Create Agent",
+                    "method": "POST",
+                    "path": "/agents",
+                    "description": "Create a new autonomous agent",
+                    "request_example": "POST /agents\n{\n  \"name\": \"knowledge_base\",\n  \"type\": \"documentation\"\n}",
+                    "response_example": "{\n  \"id\": \"agent_123\",\n  \"status\": \"initialized\"\n}"
+                }
+            ]
+        },
+        "deployment": {
+            "prerequisites": [
+                "Python 3.8+",
+                "Virtual Environment",
+                "Anthropic API Key"
+            ],
+            "steps": [
+                "Clone repository",
+                "Create virtual environment",
+                "Install dependencies",
+                "Configure environment variables",
+                "Run initialization script"
+            ],
+            "verification_steps": [
+                "Validate base agent inheritance",
+                "Run regression tests",
+                "Check agent initialization"
+            ]
+        },
+        "environment_variables": {
+            "required": {
+                "ANTHROPIC_API_KEY": {
+                    "description": "Claude API key for agent interactions",
+                    "type": "string",
+                    "example": "sk-ant-..."
+                },
+                "AGENT_MODEL": {
+                    "description": "Claude model for agent interactions",
+                    "type": "string",
+                    "example": "claude-3-haiku-20240307"
+                }
+            },
+            "optional": {
+                "DEBUG_MODE": {
+                    "description": "Enable verbose logging",
+                    "type": "boolean",
+                    "default": false
+                }
+            }
+        }
+    }
+}

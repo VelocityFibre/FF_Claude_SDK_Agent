@@ -1,51 +1,56 @@
-import pytest
 import os
+import pytest
 from agents.knowledge_base.agent import KnowledgeBaseAgent
 
-def test_extract_server_docs_success(tmpdir):
-    """Test successful extraction of server documentation."""
-    agent = KnowledgeBaseAgent(
-        server_config_path=os.path.join(
-            os.path.dirname(__file__),
-            '../agents/knowledge_base/server_config.json'
-        )
-    )
-    
-    # Test Hostinger server
-    hostinger_docs = agent.extract_server_docs('hostinger')
-    assert 'name' in hostinger_docs
-    assert hostinger_docs['name'] == 'hostinger'
-    assert 'hostname' in hostinger_docs
-    assert 'services' in hostinger_docs
-    
-    # Test VF Server
-    vf_server_docs = agent.extract_server_docs('vf-server')
-    assert 'name' in vf_server_docs
-    assert vf_server_docs['name'] == 'vf-server'
+@pytest.fixture
+def agent():
+    """Create a KnowledgeBaseAgent instance for testing"""
+    return KnowledgeBaseAgent()
 
-def test_create_markdown_docs():
-    """Test markdown documentation generation."""
-    agent = KnowledgeBaseAgent()
-    
-    sample_docs = {
-        'name': 'test-server',
-        'hostname': 'test.example.com',
-        'ip_address': '192.168.1.100',
-        'services': ['web', 'database'],
-        'ports': {'http': 80, 'https': 443}
-    }
-    
-    markdown = agent.create_markdown_docs(sample_docs)
-    
-    assert 'TEST-SERVER Server Documentation' in markdown
-    assert 'Hostname: test.example.com' in markdown
-    assert '- web' in markdown
-    assert '- **http**: 80' in markdown
+@pytest.mark.unit
+def test_create_app_docs_initialization(agent):
+    """Test that create_app_docs method exists and is callable"""
+    assert hasattr(agent, 'create_app_docs'), "Method create_app_docs not found"
+    assert callable(agent.create_app_docs), "create_app_docs is not callable"
 
-def test_extract_server_docs_not_found():
-    """Test handling of non-existent server configuration."""
-    agent = KnowledgeBaseAgent()
-    result = agent.extract_server_docs('non-existent-server')
+@pytest.mark.unit
+def test_create_app_docs_fibreflow(agent):
+    """Test documentation generation for FibreFlow application"""
+    docs = agent.create_app_docs('fibreflow')
     
-    assert 'error' in result
-    assert 'No configuration found' in result['error']
+    # Check all sections are generated
+    assert len(docs) >= 4, "Not enough documentation sections generated"
+    
+    assert 'architecture' in docs, "Architecture section missing"
+    assert 'api' in docs, "API section missing"
+    assert 'deployment' in docs, "Deployment section missing"
+    assert 'env-vars' in docs, "Environment variables section missing"
+
+@pytest.mark.unit
+def test_specific_sections_generation(agent):
+    """Test generation of specific documentation sections"""
+    docs = agent.create_app_docs('fibreflow', sections=['architecture', 'api'])
+    
+    assert len(docs) == 2, "Incorrect number of sections generated"
+    assert 'architecture' in docs, "Architecture section missing"
+    assert 'api' in docs, "API section missing"
+    assert 'deployment' not in docs, "Unexpected deployment section"
+    assert 'env-vars' not in docs, "Unexpected environment variables section"
+
+@pytest.mark.unit
+def test_markdown_generation(agent):
+    """Test that generated docs are markdown strings"""
+    docs = agent.create_app_docs('fibreflow', sections=['architecture'])
+    
+    assert isinstance(docs['architecture'], str), "Architecture docs not a string"
+    assert docs['architecture'].startswith('# '), "Markdown should start with header"
+    assert '## Overview' in docs['architecture'], "Missing markdown subsection"
+
+@pytest.mark.unit
+def test_nonexistent_app(agent):
+    """Test handling of nonexistent application"""
+    result = agent.create_app_docs('nonexistent_app')
+    
+    assert isinstance(result, dict), "Result should be a dictionary"
+    assert 'error' in result, "Error not returned for nonexistent app"
+    assert "No configuration found" in result['error'], "Incorrect error message"

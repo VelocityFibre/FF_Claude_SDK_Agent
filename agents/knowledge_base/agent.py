@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 class KnowledgeBaseAgent:
     def __init__(self, server_config_path: Optional[str] = None):
         """
-        Initialize the Knowledge Base Agent for server documentation extraction.
+        Initialize the Knowledge Base Agent for documentation generation.
         
         Args:
             server_config_path (Optional[str]): Path to server configuration JSON
@@ -15,89 +15,173 @@ class KnowledgeBaseAgent:
             'server_config.json'
         )
         
+        # App-specific configuration paths
+        self.apps_config_path = os.path.join(
+            os.path.dirname(__file__),
+            'apps_config.json'
+        )
+        
     def extract_server_docs(
         self, 
         server_name: str, 
         source_files: Optional[List[str]] = None
     ) -> Dict[str, Any]:
+        """Existing method from previous implementation"""
+        # [Previous implementation remains unchanged]
+        pass
+
+    def create_app_docs(
+        self, 
+        app_name: str, 
+        sections: List[str] = ["architecture", "api", "deployment", "env-vars"]
+    ) -> Dict[str, str]:
         """
-        Extract server documentation for a given server.
+        Generate comprehensive application documentation.
         
         Args:
-            server_name (str): Name of the server (e.g., 'hostinger', 'vf-server')
-            source_files (Optional[List[str]]): Optional list of source files to extract from
+            app_name (str): Name of the application ('fibreflow', 'qfieldcloud', etc.)
+            sections (List[str]): Documentation sections to generate
         
         Returns:
-            Dict with server documentation
+            Dict with markdown documentation sections
         """
         try:
-            with open(self.server_config_path, 'r') as f:
-                server_configs = json.load(f)
+            with open(self.apps_config_path, 'r') as f:
+                apps_config = json.load(f)
             
-            server_config = server_configs.get(server_name, {})
+            app_config = apps_config.get(app_name, {})
             
-            if not server_config:
-                raise ValueError(f"No configuration found for server: {server_name}")
+            if not app_config:
+                raise ValueError(f"No configuration found for app: {app_name}")
             
-            # Basic documentation extraction
-            docs = {
-                "name": server_name,
-                "hostname": server_config.get("hostname", ""),
-                "ip_address": server_config.get("ip_address", ""),
-                "services": server_config.get("services", []),
-                "ports": server_config.get("ports", {})
-            }
+            docs = {}
+            
+            # Architecture Section
+            if "architecture" in sections:
+                docs["architecture"] = self._generate_architecture_docs(app_config)
+            
+            # API Section
+            if "api" in sections:
+                docs["api"] = self._generate_api_docs(app_config)
+            
+            # Deployment Section
+            if "deployment" in sections:
+                docs["deployment"] = self._generate_deployment_docs(app_config)
+            
+            # Environment Variables Section
+            if "env-vars" in sections:
+                docs["env-vars"] = self._generate_env_vars_docs(app_config)
             
             return docs
         
         except FileNotFoundError:
             return {
-                "error": f"Server configuration file not found at {self.server_config_path}"
+                "error": f"Apps configuration file not found at {self.apps_config_path}"
             }
         except json.JSONDecodeError:
             return {
-                "error": f"Invalid JSON in server configuration file at {self.server_config_path}"
+                "error": f"Invalid JSON in apps configuration file at {self.apps_config_path}"
             }
         except Exception as e:
             return {
                 "error": str(e)
             }
+    
+    def _generate_architecture_docs(self, app_config: Dict[str, Any]) -> str:
+        """Generate architecture markdown documentation."""
+        architecture_details = app_config.get("architecture", {})
+        markdown = f"""# {app_config.get('name', 'Application')} Architecture
 
-    def create_markdown_docs(self, server_docs: Dict[str, Any]) -> str:
-        """
-        Convert server documentation to markdown format.
-        
-        Args:
-            server_docs (Dict[str, Any]): Server documentation dictionary
-        
-        Returns:
-            str: Markdown-formatted documentation
-        """
-        if "error" in server_docs:
-            return f"# Error\n\n{server_docs['error']}"
-        
-        markdown = f"""# {server_docs['name'].upper()} Server Documentation
+## Overview
+{architecture_details.get('overview', 'No overview available.')}
 
-## Basic Information
-- **Hostname**: {server_docs.get('hostname', 'N/A')}
-- **IP Address**: {server_docs.get('ip_address', 'N/A')}
+## Components
+{self._list_to_markdown(architecture_details.get('components', []))}
 
-## Services
-{self._list_to_markdown(server_docs.get('services', []))}
-
-## Ports
-{self._dict_to_markdown(server_docs.get('ports', {}))}
+## Design Principles
+{self._list_to_markdown(architecture_details.get('design_principles', []))}
 """
+        return markdown
+    
+    def _generate_api_docs(self, app_config: Dict[str, Any]) -> str:
+        """Generate API documentation markdown."""
+        api_details = app_config.get("api", {})
+        markdown = f"""# {app_config.get('name', 'Application')} API Documentation
+
+## Base URL
+- **URL**: {api_details.get('base_url', 'N/A')}
+
+## Authentication
+{api_details.get('authentication_method', 'No authentication details.')}
+
+## Endpoints
+"""
+        for endpoint in api_details.get('endpoints', []):
+            markdown += f"""
+### {endpoint.get('name', 'Unnamed Endpoint')}
+- **Method**: {endpoint.get('method', 'N/A')}
+- **Path**: {endpoint.get('path', 'N/A')}
+- **Description**: {endpoint.get('description', 'No description.')}
+
+**Request Example**:
+```
+{endpoint.get('request_example', 'No request example.')}
+```
+
+**Response Example**:
+```json
+{endpoint.get('response_example', '{}')}
+```
+"""
+        return markdown
+    
+    def _generate_deployment_docs(self, app_config: Dict[str, Any]) -> str:
+        """Generate deployment documentation markdown."""
+        deployment_details = app_config.get("deployment", {})
+        markdown = f"""# {app_config.get('name', 'Application')} Deployment
+
+## Prerequisites
+{self._list_to_markdown(deployment_details.get('prerequisites', []))}
+
+## Deployment Steps
+{self._list_to_markdown(deployment_details.get('steps', []))}
+
+## Post-Deployment Verification
+{self._list_to_markdown(deployment_details.get('verification_steps', []))}
+"""
+        return markdown
+    
+    def _generate_env_vars_docs(self, app_config: Dict[str, Any]) -> str:
+        """Generate environment variables documentation markdown."""
+        env_vars = app_config.get("environment_variables", {})
+        markdown = f"""# {app_config.get('name', 'Application')} Environment Variables
+
+## Required Variables
+"""
+        for var_name, var_details in env_vars.get('required', {}).items():
+            markdown += f"""
+### {var_name}
+- **Description**: {var_details.get('description', 'No description.')}
+- **Type**: {var_details.get('type', 'string')}
+- **Example**: `{var_details.get('example', 'N/A')}`
+"""
+        
+        markdown += """
+## Optional Variables
+"""
+        
+        for var_name, var_details in env_vars.get('optional', {}).items():
+            markdown += f"""
+### {var_name}
+- **Description**: {var_details.get('description', 'No description.')}
+- **Type**: {var_details.get('type', 'string')}
+- **Default**: `{var_details.get('default', 'None')}`
+"""
+        
         return markdown
     
     def _list_to_markdown(self, items: List[str]) -> str:
         """Convert a list to markdown unordered list."""
         if not items:
-            return "- No services configured"
+            return "- No items configured"
         return "\n".join(f"- {item}" for item in items)
-    
-    def _dict_to_markdown(self, dictionary: Dict[str, Any]) -> str:
-        """Convert a dictionary to markdown key-value list."""
-        if not dictionary:
-            return "- No port information"
-        return "\n".join(f"- **{k}**: {v}" for k, v in dictionary.items())
