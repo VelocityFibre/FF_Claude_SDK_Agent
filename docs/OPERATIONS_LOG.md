@@ -12,6 +12,407 @@ This log tracks operational changes, deployments, migrations, incidents, and sys
 
 ---
 
+## 2026-01-09
+
+### 08:00-09:00 SAST - Complete Authentication System Reset
+
+**Type**: Major Repository Reset / Clean Foundation
+**Severity**: Breaking Change
+**Status**: ✅ COMPLETE
+**Operator**: Claude Code + Louis
+**Server**: VF Server (100.96.203.105:3006)
+**Repository**: https://github.com/VelocityFibre/FF_Next.js
+
+**Reset Summary**:
+- **Force pushed** to GitHub master (commit `1400838b`)
+- **Removed** all authentication systems (Clerk, PostgreSQL JWT, dev bypass)
+- **Cleaned** 169 files of auth references
+- **Deployed** production build (stable, no WebSocket issues)
+- **Created** documentation: `CLEAN_FOUNDATION.md`
+
+**Timeline**:
+1. **08:00** - Reset to commit `07372867` (December 2024 base)
+2. **08:15** - Removed all Clerk imports and dependencies
+3. **08:30** - Built and deployed production version
+4. **08:45** - Force pushed clean state to GitHub
+5. **09:00** - Documented reset in multiple files
+
+**Reason for Reset**:
+- Multiple failed auth implementations caused instability
+- WebSocket/HMR issues in dev mode
+- Conflicting auth states
+- Need for clean foundation
+
+**Current State**:
+- ✅ NO authentication system
+- ✅ Production build running
+- ✅ Stable at https://vf.fibreflow.app
+- ✅ GitHub master clean
+
+**Files Created**:
+- `CLEAN_FOUNDATION.md` - Complete reset documentation
+- `CHANGELOG.md` - Version history with reset
+
+---
+
+## 2026-01-07
+
+### 14:00-16:00 SAST - WhatsApp Monitor Send Feedback Critical Fix
+
+**Type**: Production Incident / API Fix
+**Severity**: Critical - Complete service outage
+**Status**: ✅ RESOLVED
+**Operator**: Claude Code + Louis
+**Server**: Hostinger VPS (72.60.17.245)
+**Service**: WhatsApp Bridge API (port 8080)
+
+**Incident Timeline**:
+1. **14:00** - 502 Bad Gateway errors reported on production
+2. **14:15** - Identified missing build files and PM2 restart loop
+3. **14:30** - Rolled back to commit 8d18a61
+4. **14:45** - Discovered double /api path issue (root cause)
+5. **15:00** - Applied fix and rebuilt application
+6. **15:15** - Service restored and verified
+
+**Root Cause**:
+- **Double API Path**: URL construction error
+  - Had: `http://72.60.17.245:8080/api/api/send` ❌
+  - Fixed: `http://72.60.17.245:8080/api/send` ✅
+- Code was appending `/api/send` to base URL that already included `/api`
+
+**Secondary Issues**:
+- Missing ClerkHeader component causing build failures
+- Missing html5-qrcode dependency
+- Clerk auth imports failing in ticketing API
+
+**Fix Applied**:
+```diff
+- const response = await fetch(`${WHATSAPP_BRIDGE_URL}/api/send`, {
++ const response = await fetch(`${WHATSAPP_BRIDGE_URL}/send`, {
+```
+
+**Services Confirmed**:
+- **whatsapp-bridge-prod** (port 8080): Message sending ✅
+- **wa-monitor-prod**: Group monitoring (has DB errors but functional)
+
+**Verification**:
+- Successfully sent test messages to Velo Test group (120363421664266245@g.us)
+- Production URL working: https://app.fibreflow.app/wa-monitor
+
+**Documentation Created**:
+- `docs/WA_MONITOR_TROUBLESHOOTING_2026-01-07.md` - Complete incident report
+
+---
+
+### 09:00-12:00 SAST - Clerk Authentication Redirect Fix
+
+**Type**: Bug Fix / Authentication Module
+**Severity**: Medium
+**Status**: ✅ Partial (Redirect fixed, auth bypass mode still active)
+**Operator**: Claude Code + Louis
+**Server**: VF Server (velo@100.96.203.105:3006)
+**URL**: https://vf.fibreflow.app/
+
+**Issue Identified**:
+- Homepage showed "Redirecting to dashboard..." but never actually redirected
+- Router conflict between Pages Router (`pages/index.tsx`) and App Router (`app/page.tsx`)
+- Clerk hooks causing static generation errors during build
+- Middleware not enforcing authentication on protected routes
+
+**Root Causes**:
+1. Missing client-side redirect logic in `app/page.tsx`
+2. Conflicting router files preventing clean builds
+3. Attempting to use Clerk hooks (`useUser`) during static generation
+4. Authentication running in bypass/development mode
+
+**Fixes Applied**:
+1. **Implemented JavaScript redirect** in `app/page.tsx` with 1-second delay
+2. **Removed router conflict** by backing up `pages/index.tsx`
+3. **Avoided static generation issues** by using simple client-side redirect without Clerk hooks
+4. **Successfully rebuilt and deployed** application
+
+**Results**:
+- ✅ Homepage now redirects to `/ticketing` after 1 second
+- ✅ Application builds without errors (74/74 pages generated)
+- ✅ Clean App Router implementation
+- ⚠️ Authentication still in bypass mode (needs production config)
+
+**Doppler Setup Completed**:
+- Installed Doppler CLI v3.75.1
+- Created "fibreflow" project
+- Uploaded 11 secrets (Clerk keys, API keys)
+- Ready for team collaboration (pending Hein invitation)
+
+**Files Modified**:
+- `/home/velo/fibreflow-louis/app/page.tsx` - Added redirect logic
+- `/home/velo/fibreflow-louis/pages/index.tsx` - Backed up as `index.tsx.backup-conflict`
+
+**Documentation Created**:
+- `docs/CLERK_TROUBLESHOOTING_LOG_2026-01-07.md` - Detailed troubleshooting log
+- `DOPPLER_SETUP_GUIDE.md` - Updated with completion status
+
+**Next Actions Required**:
+1. Set `NODE_ENV=production` to disable auth bypass
+2. Verify Clerk environment variables are loaded
+3. Test middleware authentication enforcement
+4. Invite Hein to Doppler for secret sharing
+
+---
+
+## 2026-01-06
+
+### 06:00-08:30 SAST - Dokploy Installation & Service Management Setup
+
+**Type**: Infrastructure Enhancement
+**Severity**: Low
+**Status**: ✅ Complete
+**Operator**: Claude Code + Louis
+**Server**: VF Server (100.96.203.105)
+
+**Changes**:
+1. **Installed Dokploy**: Self-hosted PaaS for application deployment and port management
+   - Docker containers: dokploy (port 3010), dokploy-postgres, dokploy-redis
+   - Web UI: http://100.96.203.105:3010
+   - Admin account created and configured
+   - Purpose: Centralized management of multiple developer instances
+
+2. **Restarted FibreFlow on port 3006**
+   - Command: `PORT=3006 npm start`
+   - Directory: `/home/velo/fibreflow-louis`
+   - Status: Running successfully
+   - Access: https://vf.fibreflow.app (via existing Cloudflare tunnel)
+
+**Updated Port Allocation**:
+| Port | User/Service | Application | Management |
+|------|--------------|-------------|------------|
+| 3000 | Docker | Grafana monitoring | Docker |
+| 3005 | hein | FibreFlow production | Direct/PM2 |
+| 3006 | velo | FibreFlow development (PR #14) | Direct (migrating to Dokploy) |
+| 3010 | Docker | Dokploy Dashboard | Docker |
+
+**Configuration Files Created**:
+- `/home/velo/fibreflow-louis/Dockerfile` - For containerized deployment
+- `/home/velo/dokploy-compose.yml` - Dokploy stack configuration
+
+**Next Steps**:
+- Migrate FibreFlow instances to Dokploy for centralized management
+- Configure automatic restarts and health monitoring
+- Set up environment variable management through Dokploy
+
+---
+
+## 2026-01-05
+
+### 08:22-14:33 SAST - QFieldCloud: 502 Bad Gateway Resolution (Cloudflare DNS Misconfiguration)
+
+**Type**: Incident Resolution / DNS Configuration
+**Severity**: High (complete service outage via public URL)
+**Status**: ✅ Resolved
+**Operator**: Claude Code + Louis
+**Server**: srv1083126.hstgr.cloud (72.61.166.168)
+**Duration**: 6 hours 11 minutes (discovery to resolution)
+
+**Incident**:
+QFieldCloud web interface and API endpoints returning 502 Bad Gateway errors via https://qfield.fibreflow.app. All endpoints (API, admin, web interface, docs) inaccessible to users.
+
+**Root Cause**:
+Cloudflare DNS record for `qfield.fibreflow.app` was pointing to wrong destination:
+- **Incorrect**: CNAME → `0bf9e4fa-f650-498c-bd23-def05abe5aaf.cfargotunnel.com` (Cloudflare Tunnel not configured for QFieldCloud)
+- **Correct**: A Record → `72.61.166.168` (direct to QFieldCloud server)
+
+**Impact**:
+- ❌ All public web access via qfield.fibreflow.app: DOWN (502 errors)
+- ✅ Mobile app sync: WORKING (direct container access)
+- ✅ Internal server health: 100% operational
+- ✅ Database: Healthy (PostgreSQL 407 MB)
+- **Users affected**: All web users, field agents unable to access admin interface
+
+**Diagnosis Timeline**:
+
+1. **08:22** - Initial status check revealed 502 errors on all API endpoints
+2. **08:30** - Restarted all Docker containers (app, nginx, db, workers)
+3. **09:00** - Updated nginx configuration to accept `qfield.fibreflow.app` hostname
+4. **10:00** - Updated SSL certificates from srv1083126.hstgr.cloud → qfield.fibreflow.app
+5. **11:00** - Verified internal connectivity working (401 auth required = healthy)
+6. **12:00** - Diagnosed Cloudflare DNS misconfiguration (CNAME vs A record)
+7. **14:30** - DNS record corrected, service fully restored
+
+**Server-Side Fixes Applied**:
+
+1. **Nginx Configuration**:
+   ```bash
+   # Updated both HTTP (port 80) and HTTPS (port 443) server blocks
+   server_name srv1083126.hstgr.cloud qfield.fibreflow.app;
+   ```
+
+2. **SSL Certificates**:
+   ```bash
+   # Changed from:
+   ssl_certificate /etc/nginx/certs/srv1083126.hstgr.cloud.pem;
+   # To:
+   ssl_certificate /etc/nginx/certs/qfield.fibreflow.app.pem;
+   ```
+
+3. **Docker Services**:
+   - Restarted: qfieldcloud-app-1, qfieldcloud-nginx-1, qfieldcloud-db-1
+   - Restarted: qfieldcloud-minio-1, 4× worker_wrapper containers
+   - All containers healthy after restart
+
+**Cloudflare DNS Fix** (Root Cause Resolution):
+
+**Before**:
+```
+Type: CNAME
+Name: qfield
+Content: 0bf9e4fa-f650-498c-bd23-def05abe5aaf.cfargotunnel.com
+```
+
+**After**:
+```
+Type: A
+Name: qfield
+Content: 72.61.166.168
+Proxy status: Proxied (orange cloud)
+TTL: Auto
+```
+
+**Verification**:
+
+```bash
+# Status check after DNS change
+curl -I https://qfield.fibreflow.app/api/v1/
+# Result: HTTP/2 401 (✅ Working - auth required)
+
+# Full system check
+docker ps --filter 'name=qfieldcloud' | wc -l  # 9 containers running
+psql -h localhost -U qfieldcloud_db_admin -c "SELECT version();"  # ✅ PostgreSQL healthy
+
+# API health endpoints
+GET https://qfield.fibreflow.app/api/v1/           # 200 OK ✅
+GET https://qfield.fibreflow.app/admin/            # 302 Redirect ✅
+GET https://qfield.fibreflow.app/api/v1/docs/      # 200 OK ✅
+```
+
+**Final System Status** (14:33):
+- ✅ API Status: 200 OK (database: ok, storage: ok)
+- ✅ API Documentation: 200 OK
+- ✅ Admin Interface: 302 Redirect (working)
+- ✅ Web Interface: 302 Redirect (working)
+- ✅ Docker Services: 9/9 containers running
+- ✅ Database: PostgreSQL 410 MB, accepting connections
+- ✅ Server Resources: CPU 0%, RAM 47%, Disk 85%
+
+**Lessons Learned**:
+
+1. **Always verify DNS first**: 90% of "server down" issues are DNS/proxy configuration
+2. **Internal tests prove server health**: If curl works locally but not externally → DNS/proxy issue
+3. **Cloudflare Tunnels need explicit routing**: Can't route arbitrary domains through a tunnel without configuration
+4. **Direct A records are simpler**: Use tunnels only when needed for security/NAT traversal
+5. **502 vs 401 distinction**: 502 = can't reach server, 401 = server working (auth required)
+
+**Documentation Updated**:
+- `docs/OPERATIONS_LOG.md` - This incident entry
+- `.claude/skills/qfieldcloud/skill.md` - Updated troubleshooting section
+- DNS records now match server configuration
+
+**Files Modified**:
+- Cloudflare DNS: qfield.fibreflow.app (CNAME → A record)
+- `/etc/nginx/conf.d/default.conf` (inside qfieldcloud-nginx-1 container)
+- No code changes required
+
+**Rollback Procedure** (if DNS change causes issues):
+```bash
+# Revert to tunnel (not recommended):
+# Delete A record, recreate CNAME to tunnel
+# Then configure tunnel ingress for qfield.fibreflow.app
+
+# OR: Use backup hostname
+https://srv1083126.hstgr.cloud/api/v1/  # Always works (direct IP)
+```
+
+**Monitoring**:
+- Watch for DNS propagation issues (should be complete within 5 minutes globally)
+- Monitor Cloudflare error rates for qfield.fibreflow.app
+- Alert if disk usage exceeds 90% (currently 85%)
+
+**Related Issues**: None
+
+**Follow-up Actions**:
+- [x] DNS record corrected
+- [x] All services verified operational
+- [x] Documentation updated
+- [ ] Consider implementing uptime monitoring (e.g., UptimeRobot) for early 502 detection
+- [ ] Review other services using same Cloudflare Tunnel to ensure proper routing
+- [ ] Document DNS record mapping in Cloudflare for all fibreflow.app subdomains
+
+**Cost**: $0 (configuration-only fix, no additional resources)
+
+**Public Communication**: None required (internal development infrastructure)
+
+---
+
+### 10:00-12:00 SAST - FibreFlow PR #14 Deployment & Multi-User Setup
+
+**Type**: Deployment / Infrastructure Change
+**Severity**: Medium (URL routing changed)
+**Status**: ✅ Complete
+**Operator**: Claude Code + Louis
+**Location**: VF Server (100.96.203.105)
+
+**Changes**:
+1. **Merged PR #14**: Complete Ticketing Module & Asset Management System
+   - 127 commits, 408 files changed, +134,232 lines
+   - Features: Ticketing, Asset Management, QContact Integration
+   - Merge commit: `fbe1adb7e67c9627bfca0ae2a6948083b7350ed6`
+
+2. **Multi-User Development Setup**:
+   - Created separate FibreFlow instance for user `velo` on port 3006
+   - Path: `~/fibreflow-louis` (user velo's home directory)
+   - Independent from hein's instance on port 3005
+
+3. **Cloudflare Tunnel Reconfiguration**:
+   - Stopped tunnel under user `louis`
+   - Migrated tunnel to user `velo`
+   - Updated vf.fibreflow.app to point to port 3006 (velo's instance)
+   - Previous port 3005 (hein's instance) now only accessible via IP
+
+4. **SSH Access Correction**:
+   - Corrected credentials: `ssh velo@100.96.203.105` (password: 2025)
+   - Previous docs incorrectly listed user as `louis`
+   - Set up SSH key for passwordless access
+
+**Port Allocation**:
+| Port | User | Application |
+|------|------|------------|
+| 3000 | Docker | Grafana monitoring |
+| 3005 | hein | FibreFlow production |
+| 3006 | velo | FibreFlow development (PR #14) |
+
+**URLs Affected**:
+- https://vf.fibreflow.app now points to port 3006 (velo's instance with PR #14)
+- https://support.fibreflow.app also routes to port 3006
+
+**Documentation Updated**:
+- CLAUDE.md: Corrected VF Server credentials and configuration
+- Added port management reference at `~/tunnel-management.txt`
+
+**Rollback Procedure** (if needed):
+```bash
+# Stop velo's tunnel
+pkill cloudflared
+
+# As user louis, restart original tunnel:
+ssh louis@100.96.203.105
+nohup ~/cloudflared tunnel run vf-downloads > /tmp/cloudflared.log 2>&1 &
+```
+
+**Notes**:
+- Consider implementing formal port management system (e.g., Dokploy) for multi-user development
+- Team should coordinate on subdomain strategy to avoid conflicts
+- PR #14 adds significant new functionality - monitor for issues
+
+---
+
 ## 2025-12-23
 
 ### 07:00-08:45 SAST - Knowledge Base System Deployment
