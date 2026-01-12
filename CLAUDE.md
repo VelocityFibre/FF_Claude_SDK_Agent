@@ -349,6 +349,7 @@ systemctl stop whatsapp-sender.service && systemctl disable whatsapp-sender.serv
 - `PROJECT_SUMMARY.md` - Overall project overview
 - `QUICK_REFERENCE.md` - One-page developer cheat sheet
 - `QUICK_START.md` - Getting started guide
+- `docs/CLAUDE_CODE_2024_FEATURES.md` - **Advanced Claude Code features guide** (async agents, hooks, teleport)
 
 **Agent Guides**:
 - `NEON_AGENT_GUIDE.md` - Complete Neon agent documentation

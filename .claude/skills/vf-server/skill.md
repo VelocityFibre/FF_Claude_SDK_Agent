@@ -3,6 +3,11 @@ name: vf-server
 description: Direct VF Velocity server operations via Tailscale
 version: 1.0.0
 requires: ssh, sshpass, curl
+async: true
+context_fork: true
+hooks:
+  pre_tool_use: "echo '[VF-Server] Operation start: $(date) - User: $USER' >> /tmp/vf_server_ops.log"
+  post_tool_use: "echo '[VF-Server] Operation end: $(date)' >> /tmp/vf_server_ops.log"
 ---
 
 # VF Server Operations Skill

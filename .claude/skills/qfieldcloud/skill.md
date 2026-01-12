@@ -6,6 +6,11 @@ author: FibreFlow Team
 category: application
 tags: [django, docker, postgresql, gis, qfield, qgis, deployment]
 created: 2024-12-17
+async: true
+context_fork: true
+hooks:
+  pre_tool_use: "echo '[QFieldCloud] Starting operation at $(date)' >> /tmp/qfield_operations.log"
+  post_tool_use: "echo '[QFieldCloud] Completed operation at $(date)' >> /tmp/qfield_operations.log"
 ---
 
 # QFieldCloud Management Skill
