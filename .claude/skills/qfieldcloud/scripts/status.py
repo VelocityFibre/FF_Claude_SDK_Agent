@@ -42,6 +42,13 @@ class QFieldCloudMonitor:
             '-o', 'StrictHostKeyChecking=no',
             '-o', 'ConnectTimeout=10'
         ]
+
+        # Use SSH key if no password provided
+        if not self.vps_password:
+            ssh_key_path = os.path.expanduser('~/.ssh/qfield_vps')
+            if os.path.exists(ssh_key_path):
+                ssh_options.extend(['-i', ssh_key_path])
+
         ssh_cmd.extend(ssh_options)
 
         if self.vps_password:
@@ -74,7 +81,7 @@ class QFieldCloudMonitor:
         print("🐳 Docker Services Status")
         print("=" * 60)
 
-        command = f"cd {self.project_path} && docker-compose ps --format json 2>/dev/null"
+        command = f"cd {self.project_path} && docker compose ps --format json 2>/dev/null"
         success, output = self.execute_ssh_command(command)
 
         if not success:
@@ -97,8 +104,8 @@ class QFieldCloudMonitor:
                         pass
 
             if not containers:
-                # Try parsing as docker-compose ps output
-                command = f"cd {self.project_path} && docker-compose ps"
+                # Try parsing as docker compose ps output
+                command = f"cd {self.project_path} && docker compose ps"
                 success, output = self.execute_ssh_command(command)
 
                 if success:
@@ -221,14 +228,14 @@ class QFieldCloudMonitor:
         print("=" * 60)
 
         # Check if database container is running
-        command = f"cd {self.project_path} && docker-compose exec -T db pg_isready -U qfieldcloud_db_admin 2>/dev/null"
+        command = f"cd {self.project_path} && docker compose exec -T db pg_isready -U qfieldcloud_db_admin 2>/dev/null"
         success, output = self.execute_ssh_command(command)
 
         if success and "accepting connections" in output:
             print("✅ PostgreSQL is accepting connections")
 
             # Get database size
-            command = f"""cd {self.project_path} && docker-compose exec -T db psql -U qfieldcloud_db_admin -d qfieldcloud_db -c "SELECT pg_database_size('qfieldcloud_db'), pg_size_pretty(pg_database_size('qfieldcloud_db'))" -t 2>/dev/null"""
+            command = f"""cd {self.project_path} && docker compose exec -T db psql -U qfieldcloud_db_admin -d qfieldcloud_db -c "SELECT pg_database_size('qfieldcloud_db'), pg_size_pretty(pg_database_size('qfieldcloud_db'))" -t 2>/dev/null"""
             success, size_output = self.execute_ssh_command(command)
 
             if success and size_output:
@@ -246,7 +253,7 @@ class QFieldCloudMonitor:
         services_to_check = ['app', 'nginx', 'worker_wrapper']
 
         for service in services_to_check:
-            command = f"cd {self.project_path} && docker-compose logs --tail 50 {service} 2>&1 | grep -i 'error\\|exception\\|failed' | tail -5"
+            command = f"cd {self.project_path} && docker compose logs --tail 50 {service} 2>&1 | grep -i 'error\\|exception\\|failed' | tail -5"
             success, output = self.execute_ssh_command(command)
 
             if success and output.strip():

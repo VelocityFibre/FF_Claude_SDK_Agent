@@ -1,0 +1,59 @@
+# Claude Code Approved Commands Configuration
+# This file defines patterns for auto-approved commands while maintaining audit logs
+
+version: 1.0
+auto_approve:
+  # Cloudflare Tunnel Operations
+  - pattern: "VF_SERVER_PASSWORD=\"VeloAdmin2025!\" .claude/skills/vf-server/scripts/execute.py '~/cloudflared tunnel route dns*"
+    description: "Cloudflare DNS route management"
+    log_level: info
+    notify: false
+
+  # VF Server Status Checks (Safe Read-Only)
+  - pattern: "VF_SERVER_PASSWORD=\"VeloAdmin2025!\" .claude/skills/vf-server/scripts/execute.py 'ps aux*"
+    description: "Process monitoring"
+    log_level: debug
+    notify: false
+
+  - pattern: "VF_SERVER_PASSWORD=\"VeloAdmin2025!\" .claude/skills/vf-server/scripts/execute.py 'tail*"
+    description: "Log viewing"
+    log_level: debug
+    notify: false
+
+  - pattern: "VF_SERVER_PASSWORD=\"VeloAdmin2025!\" .claude/skills/vf-server/scripts/execute.py 'ss -tlnp*"
+    description: "Port monitoring"
+    log_level: debug
+    notify: false
+
+  # Database Queries (Read-Only)
+  - pattern: "VF_SERVER_PASSWORD=\"VeloAdmin2025!\" .claude/skills/vf-server/scripts/execute.py 'psql*SELECT*"
+    description: "Database read queries"
+    log_level: info
+    notify: false
+
+# Commands that always require approval
+require_approval:
+  - pattern: "*rm -rf*"
+    reason: "Destructive file operations"
+
+  - pattern: "*DROP TABLE*"
+    reason: "Database destruction"
+
+  - pattern: "*pkill*"
+    reason: "Process termination"
+
+  - pattern: "*systemctl restart*"
+    reason: "Service restart"
+
+# Notification settings
+notifications:
+  webhook_url: ""  # Optional: Slack/Discord webhook for important operations
+  email: ""        # Optional: Email for critical operations
+
+# Logging configuration
+logging:
+  enabled: true
+  file: "/home/louisdup/Agents/claude/logs/auto-approved-commands.log"
+  format: "json"
+  rotate_size: "10MB"
+  keep_backups: 5

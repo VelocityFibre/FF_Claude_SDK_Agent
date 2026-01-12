@@ -1,0 +1,180 @@
+# FibreFlow Module Index
+# Maps all modules/agents/skills to their dependencies, isolation status, and metadata
+# Updated: 2026-01-12
+
+# Module Categories
+categories:
+  core: ["workflow", "installations", "projects"]
+  procurement: ["ticketing", "purchase-orders", "contractor-management"]
+  monitoring: ["wa-monitor", "qfieldcloud", "vps-monitor", "system-health"]
+  ai: ["knowledge-base", "voice-agent", "proactive-worker"]
+  infrastructure: ["storage-api", "whatsapp-sender", "ocr-service"]
+
+# Module Registry
+modules:
+  # Core Infrastructure Modules
+  qfieldcloud:
+    type: skill
+    location: .claude/skills/qfieldcloud/
+    deployment: VF Server port 8082
+    dependencies:
+      external: [minio, postgresql, postgis, qgis]
+      internal: []
+    database_tables: [qfield_projects, qfield_layers, qfield_sync_logs]
+    api_endpoints: [/api/v1/projects, /api/v1/sync, /api/v1/files]
+    isolation: fully_isolated
+    developers: [louis]
+    notes: "Migrated from dedicated server Jan 2026. 8 workers, 2.7GB QGIS image"
+
+  wa-monitor:
+    type: agent
+    location: agents/wa-monitor/
+    deployment: VF Server port 3005 (dev instance)
+    dependencies:
+      external: [whatsapp-sender, vlm-qwen3, neon]
+      internal: []
+    database_tables: [foto_ai_reviews, whatsapp_messages]
+    api_endpoints: [/foto-reviews, /api/whatsapp/webhook]
+    isolation: fully_isolated
+    developers: [louis]
+    notes: "VLM-powered photo review. WhatsApp phone +27 71 155 8396 MUST be paired"
+
+  knowledge-base:
+    type: agent
+    location: agents/knowledge_base/
+    deployment: docs.fibreflow.app + api.docs.fibreflow.app
+    dependencies:
+      external: [neon, qdrant]
+      internal: []
+    database_tables: [kb_documents, kb_embeddings]
+    api_endpoints: [/search, /documents, /embeddings]
+    isolation: mostly_isolated
+    developers: [louis]
+    notes: "Git repo: ~/velocity-fibre-knowledge/ on VF Server"
+
+  whatsapp-sender:
+    type: infrastructure
+    location: /opt/whatsapp-sender/ (VF Server - planned migration)
+    deployment: Port 8081
+    dependencies:
+      external: [go, whatsmeow]
+      internal: []
+    database_tables: []
+    api_endpoints: [/send, /pair, /status]
+    isolation: fully_isolated
+    developers: [louis]
+    notes: "Go + whatsmeow. Supports pairing codes. Session in ~/whatsapp-sender/store/"
+
+  ocr-service:
+    type: infrastructure
+    location: /opt/ocr-service/
+    deployment: Port 8095 (ocr.fibreflow.app planned)
+    dependencies:
+      external: [fastapi, tesseract, easyocr, paddleocr, doctr]
+      internal: []
+    database_tables: []
+    api_endpoints: [/extract-text, /extract-fields, /classify]
+    isolation: fully_isolated
+    developers: [louis, hein]
+    notes: "4-tier OCR cascade. New Jan 2026"
+
+  storage-api:
+    type: infrastructure
+    location: /opt/storage-api/ (VF Server)
+    deployment: Port 8091
+    dependencies:
+      external: [fastapi]
+      internal: []
+    database_tables: []
+    api_endpoints: [/upload, /download, /delete]
+    isolation: fully_isolated
+    developers: [louis]
+    notes: "Replaced Firebase. Saves R50/month. Storage: /srv/data/fibreflow-storage/"
+
+  # Core Business Modules (Next.js - tightly coupled)
+  ticketing:
+    type: module
+    location: src/app/tickets/ (main FibreFlow app)
+    deployment: app.fibreflow.app
+    dependencies:
+      external: [neon, convex]
+      internal: [workflow, projects, contractors]
+    database_tables: [tickets, ticket_comments, ticket_attachments]
+    api_endpoints: [/api/tickets, /api/tickets/[id]]
+    isolation: mostly_isolated
+    developers: [hein, louis]
+    notes: "GitHub Actions autonomous ticketing integration"
+
+  workflow:
+    type: module
+    location: src/app/workflow/ (main FibreFlow app)
+    deployment: app.fibreflow.app
+    dependencies:
+      external: [neon, convex, inngest]
+      internal: [installations, projects, ticketing]
+    database_tables: [workflows, workflow_steps, workflow_instances]
+    api_endpoints: [/api/workflows, /api/workflows/[id]/execute]
+    isolation: tightly_coupled
+    developers: [hein, louis]
+    notes: "Critical path - affects installations, projects, ticketing"
+
+  installations:
+    type: module
+    location: src/app/installations/ (main FibreFlow app)
+    deployment: app.fibreflow.app
+    dependencies:
+      external: [neon, convex]
+      internal: [workflow, projects, contractors]
+    database_tables: [installations, installation_phases, installation_checklist]
+    api_endpoints: [/api/installations, /api/installations/[id]]
+    isolation: tightly_coupled
+    developers: [hein, louis]
+    notes: "Core business logic - modify with care"
+
+# Isolation Levels
+isolation_levels:
+  fully_isolated:
+    description: "No dependencies on other modules. Safe to modify, deploy independently"
+    modules: [qfieldcloud, wa-monitor, whatsapp-sender, storage-api, ocr-service]
+
+  mostly_isolated:
+    description: "Minimal dependencies. Can be modified with awareness of connections"
+    modules: [knowledge-base, ticketing]
+
+  tightly_coupled:
+    description: "Multiple interdependencies. Requires integration testing before deployment"
+    modules: [workflow, installations, projects]
+
+# Database Table Ownership
+database_tables:
+  neon_postgresql:
+    qfield_projects: qfieldcloud
+    qfield_layers: qfieldcloud
+    foto_ai_reviews: wa-monitor
+    kb_documents: knowledge-base
+    tickets: ticketing
+    workflows: workflow
+    installations: installations
+
+  convex:
+    tickets_realtime: ticketing
+    workflow_status: workflow
+    notifications: [ticketing, workflow, installations]
+
+# Development Guidelines
+guidelines:
+  before_modifying:
+    - "Read module profile: .claude/modules/{module-name}.md"
+    - "Check dependencies in _index.yaml"
+    - "Verify isolation level"
+    - "Review database tables affected"
+
+  testing_requirements:
+    fully_isolated: "Unit tests only"
+    mostly_isolated: "Unit + integration tests with mocked dependencies"
+    tightly_coupled: "Unit + integration + E2E tests required"
+
+  deployment_strategy:
+    fully_isolated: "Can deploy independently"
+    mostly_isolated: "Deploy to dev environment first, verify integrations"
+    tightly_coupled: "Requires full staging deployment + smoke tests"

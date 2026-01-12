@@ -70,7 +70,7 @@ class QFieldCloudDeployer:
         backup_file = f"qfieldcloud_backup_{timestamp}.sql"
 
         command = f"""cd {self.project_path} && \
-            docker-compose exec -T db pg_dump -U qfieldcloud_db_admin qfieldcloud_db > /tmp/{backup_file} && \
+            docker compose exec -T db pg_dump -U qfieldcloud_db_admin qfieldcloud_db > /tmp/{backup_file} && \
             echo "Backup saved to /tmp/{backup_file}" """
 
         success, output = self.execute_ssh_command(command)
@@ -144,7 +144,7 @@ class QFieldCloudDeployer:
         """Build Docker images"""
         print("🔨 Building Docker images (this may take several minutes)...")
 
-        command = f"cd {self.project_path} && docker-compose build"
+        command = f"cd {self.project_path} && docker compose build"
         success, output = self.execute_ssh_command(command, show_output=False)
 
         if not success:
@@ -158,7 +158,7 @@ class QFieldCloudDeployer:
         """Run Django database migrations"""
         print("🔄 Running database migrations...")
 
-        command = f"cd {self.project_path} && docker-compose exec -T app python manage.py migrate"
+        command = f"cd {self.project_path} && docker compose exec -T app python manage.py migrate"
         success, output = self.execute_ssh_command(command)
 
         if not success:
@@ -172,7 +172,7 @@ class QFieldCloudDeployer:
         """Collect Django static files"""
         print("📁 Collecting static files...")
 
-        command = f"cd {self.project_path} && docker-compose exec -T app python manage.py collectstatic --noinput"
+        command = f"cd {self.project_path} && docker compose exec -T app python manage.py collectstatic --noinput"
         success, output = self.execute_ssh_command(command, show_output=False)
 
         if not success:
@@ -186,10 +186,10 @@ class QFieldCloudDeployer:
         """Restart Docker services"""
         if service:
             print(f"🔄 Restarting {service} service...")
-            command = f"cd {self.project_path} && docker-compose restart {service}"
+            command = f"cd {self.project_path} && docker compose restart {service}"
         else:
             print("🔄 Restarting all services...")
-            command = f"cd {self.project_path} && docker-compose restart"
+            command = f"cd {self.project_path} && docker compose restart"
 
         success, output = self.execute_ssh_command(command)
 
@@ -212,7 +212,7 @@ class QFieldCloudDeployer:
             print("✅ API is responding (200 OK)")
 
             # Check all services are running
-            command = f"cd {self.project_path} && docker-compose ps | grep -c 'Up'"
+            command = f"cd {self.project_path} && docker compose ps | grep -c 'Up'"
             success, count = self.execute_ssh_command(command, show_output=False)
 
             if success and int(count.strip()) > 0:
@@ -280,8 +280,8 @@ class QFieldCloudDeployer:
         commands = [
             f"cd {self.project_path}",
             f"git reset --hard {commit_hash}",
-            "docker-compose build",
-            "docker-compose up -d"
+            "docker compose build",
+            "docker compose up -d"
         ]
 
         for cmd in commands:

@@ -1,0 +1,13 @@
+# Personal settings (don't share)
+settings.local.json
+settings.local.json.backup
+cache/
+logs/
+*.tmp
+*.log
+
+# Personal commands (optional)
+commands/personal/
+
+# MCP personal configs
+mcp-config-local.json

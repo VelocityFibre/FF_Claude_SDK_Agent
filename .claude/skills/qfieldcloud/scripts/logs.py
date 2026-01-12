@@ -130,8 +130,8 @@ class QFieldCloudLogViewer:
 
         print("=" * 60)
 
-        # Build docker-compose logs command
-        cmd_parts = [f'cd {self.project_path}', '&&', 'docker-compose', 'logs']
+        # Build docker compose logs command
+        cmd_parts = [f'cd {self.project_path}', '&&', 'docker compose', 'logs']
 
         if not follow:
             cmd_parts.extend(['--tail', str(lines)])
@@ -198,7 +198,7 @@ class QFieldCloudLogViewer:
         total_matches = 0
 
         for svc in services_to_search:
-            command = f"cd {self.project_path} && docker-compose logs --tail 500 {svc} 2>&1 | grep -i -C {context_lines} '{pattern}'"
+            command = f"cd {self.project_path} && docker compose logs --tail 500 {svc} 2>&1 | grep -i -C {context_lines} '{pattern}'"
             success, output = self.execute_ssh_command(command)
 
             if success and output.strip():
@@ -234,7 +234,7 @@ class QFieldCloudLogViewer:
         critical_services = ['app', 'nginx', 'worker_wrapper']
 
         for service in critical_services:
-            command = f"cd {self.project_path} && docker-compose logs --tail 1000 {service} 2>&1 | grep -E 'ERROR|Exception|Failed|Critical'"
+            command = f"cd {self.project_path} && docker compose logs --tail 1000 {service} 2>&1 | grep -E 'ERROR|Exception|Failed|Critical'"
             success, output = self.execute_ssh_command(command)
 
             if success and output.strip():
@@ -283,7 +283,7 @@ class QFieldCloudLogViewer:
         """Export logs to a file"""
         print(f"\n💾 Exporting {service} logs to {output_file}...")
 
-        command = f"cd {self.project_path} && docker-compose logs --tail {lines} {service} > /tmp/qfield_logs.txt 2>&1"
+        command = f"cd {self.project_path} && docker compose logs --tail {lines} {service} > /tmp/qfield_logs.txt 2>&1"
         success, output = self.execute_ssh_command(command)
 
         if not success:

@@ -1,0 +1,28 @@
+# Module Ownership Registry
+# Each module should have a primary maintainer
+
+modules:
+  infrastructure:
+    description: "Server configs, ports, deployments"
+    maintainer: "team"
+    last_updated: "2026-01-12"
+
+  qfieldcloud:
+    description: "QFieldCloud service documentation"
+    maintainer: "team"
+    last_updated: "2026-01-12"
+
+  wa-monitor:
+    description: "WhatsApp monitoring service"
+    maintainer: "team"
+    last_updated: "2026-01-12"
+
+  storage-api:
+    description: "Storage API service"
+    maintainer: "team"
+    last_updated: "2026-01-12"
+
+  ocr-service:
+    description: "OCR service documentation"
+    maintainer: "team"
+    last_updated: "2026-01-12"
