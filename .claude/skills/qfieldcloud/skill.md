@@ -43,33 +43,38 @@ Comprehensive skill for managing QFieldCloud - a Django-based service for synchr
 
 ## Infrastructure Configuration
 
-- **Production Server**: srv1083126.hstgr.cloud (72.61.166.168)
-- **Public URL**: https://qfield.fibreflow.app
+- **Production Server**: VF Server (100.96.203.105:8082)
+- **Public URL**: https://qfield.fibreflow.app (via Cloudflare Tunnel)
 - **Local Development**: /home/louisdup/VF/Apps/QFieldCloud/
 - **GitHub**: opengisch/QFieldCloud (fork)
+- **Battery Backup**: ✅ UPS system (1-2 hours load shedding protection)
+- **Migration Date**: 2026-01-08 (from Hostinger srv1083126.hstgr.cloud)
+- **Old Server**: 72.61.166.168 (DECOMMISSIONED - backups archived)
 
 ## Services Architecture
 
 QFieldCloud runs multiple Docker containers:
 
-| Service | Purpose | Port |
-|---------|---------|------|
-| `nginx` | Reverse proxy, SSL termination | 80, 443 |
-| `app` | Django application (gunicorn) | 8011 |
-| `db` | PostgreSQL with PostGIS | 5432 |
-| `redis` | Cache and queue broker | 6379 |
-| `worker_wrapper` | Background task processing | - |
-| `minio` | Object storage (S3 compatible) | 9000 |
-| `ofelia` | Cron job scheduler | - |
+| Service | Purpose | Port | Notes |
+|---------|---------|------|-------|
+| `nginx` | Reverse proxy | 8082 | Behind Cloudflare Tunnel |
+| `app` | Django application (gunicorn) | 8000 | CSRF fix applied 2026-01-10 |
+| `db` | PostgreSQL 13 + PostGIS | 5433 | User: qfieldcloud_db_admin |
+| `minio` | Object storage (S3 compatible) | 8009-8010 | 4 data volumes |
+| `worker_wrapper` (8x) | Background job processing | - | **Scaled from 4 to 8 workers** |
+| `qgis` | GIS project processing | - | **CRITICAL**: 2.7GB image required |
+| `memcached` | Cache | 11211 | - |
+| `ofelia` | Cron job scheduler | - | - |
 
 ## Environment Variables
 
 Required environment variables (stored in .env):
-- `QFIELDCLOUD_HOST`: Server hostname
-- `QFIELDCLOUD_VPS_HOST`: VPS IP address (72.61.166.168)
-- `QFIELDCLOUD_VPS_USER`: SSH username
-- `QFIELDCLOUD_VPS_PASSWORD`: SSH password (optional if using key)
-- `QFIELDCLOUD_PROJECT_PATH`: Remote project path
+- `QFIELDCLOUD_HOST`: Server hostname (qfield.fibreflow.app)
+- `QFIELDCLOUD_VPS_HOST`: VF Server IP (100.96.203.105)
+- `QFIELDCLOUD_VPS_USER`: SSH username (velo)
+- `QFIELDCLOUD_VPS_PASSWORD`: SSH password (2025)
+- `QFIELDCLOUD_PROJECT_PATH`: Remote project path (/opt/qfieldcloud)
+- `CSRF_TRUSTED_ORIGINS`: **CRITICAL** - Space-separated trusted origins for POST requests
 
 ## Scripts Available
 
@@ -158,7 +163,99 @@ Shows:
 ./scripts/users.py --action quota --username john
 ```
 
+## Sync Troubleshooting
+
+### Critical Requirements for Sync
+
+The `worker_wrapper` service is **CRITICAL** for sync operations. Without it:
+- App connects successfully (no error shown)
+- Sync appears to start but never completes
+- Jobs queue up but are never processed
+
+```bash
+# Quick sync readiness check
+./scripts/sync_diagnostic.py
+
+# Manual check for worker
+docker ps | grep worker
+```
+
+### Common Sync Issues
+
+1. **"Sync failed" - Worker not running** (MOST COMMON)
+   ```bash
+   # Diagnose and auto-fix
+   ./scripts/sync_diagnostic.py
+
+   # Manual fix - Build worker (15 min)
+   cd /home/louisdup/VF/Apps/QFieldCloud
+   docker-compose build worker_wrapper
+   docker-compose up -d worker_wrapper
+   ```
+
+2. **Worker keeps crashing - Docker permission**
+   ```bash
+   # Worker needs root for Docker socket access
+   docker run -d --name qfieldcloud-worker \
+     --user root \
+     --network qfieldcloud_default \
+     -v /var/run/docker.sock:/var/run/docker.sock \
+     qfieldcloud-worker_wrapper:latest \
+     python manage.py dequeue
+   ```
+
+3. **Worker can't connect to database**
+   ```bash
+   # Find correct database container name
+   docker ps | grep -E 'db|postgres'
+   # Use that name in POSTGRES_HOST env var
+   ```
+
+4. **Port conflict errors**
+   - Worker doesn't need port mapping (remove -p flag)
+   - Only app service needs port 8011
+
 ## Troubleshooting
+
+### Critical Fixes (2026-01-10) - VF Server Migration
+
+#### ⚠️ CSRF 403 Forbidden Errors
+
+**Symptom**: "CSRF verification failed. Request aborted. Origin checking failed"
+
+**Quick Fix**:
+```bash
+# 1. Verify CSRF_TRUSTED_ORIGINS in .env
+cat /opt/qfieldcloud/.env | grep CSRF
+
+# 2. Restart app container
+docker restart qfieldcloud-app-1
+
+# 3. Verify in Django
+docker exec qfieldcloud-app-1 python manage.py shell -c \
+  "from django.conf import settings; print(settings.CSRF_TRUSTED_ORIGINS)"
+```
+
+**Permanent Fix**: See `MIGRATION_COMPLETE.md` for full details
+
+#### ⚠️ Project Upload Failures ("Failed state")
+
+**Symptom**: Files upload but jobs fail immediately, projects don't appear in QField
+
+**Quick Fix**:
+```bash
+# 1. Verify QGIS image exists
+docker images | grep qgis
+# Should show: qfieldcloud-qgis:latest - 2.7GB
+
+# 2. If missing, rebuild
+docker-compose build qgis
+
+# 3. Restart workers
+docker ps | grep worker_wrapper | awk '{print $NF}' | xargs docker restart
+```
+
+**Root Cause**: Workers need qfieldcloud-qgis Docker image to process GIS files
 
 ### Common Issues
 
@@ -172,15 +269,41 @@ Shows:
    ./scripts/database.py --action status
    ```
 
-3. **SSL certificate issues**: Renew Let's Encrypt certificate
+3. **SSL certificate issues**: Now handled by Cloudflare Tunnel (no local SSL)
    ```bash
-   ./scripts/ssl.py --action renew
+   # Check tunnel status
+   ps aux | grep cloudflared
    ```
 
 4. **Storage issues**: Check MinIO/S3 connectivity
    ```bash
    ./scripts/health.py --verbose
    ```
+
+5. **502 Bad Gateway errors via qfield.fibreflow.app**: Tunnel or container issues
+   ```bash
+   # Test direct server access
+   curl -I http://100.96.203.105:8082 -H "Host: qfield.fibreflow.app"
+   # Expected: HTTP/1.1 302 (redirect to login)
+
+   # Test via public URL
+   curl -I https://qfield.fibreflow.app/
+
+   # Check Cloudflare Tunnel status
+   ssh velo@100.96.203.105
+   ps aux | grep cloudflared | grep qfield
+
+   # Restart tunnel if needed
+   sudo systemctl restart cloudflared
+   ```
+
+   **Root Cause**: Cloudflare Tunnel down or nginx container not running
+
+   **VF Server Configuration**:
+   - QFieldCloud runs on port 8082 (internal)
+   - Cloudflare Tunnel forwards qfield.fibreflow.app → localhost:8082
+   - Tunnel config: /home/velo/.cloudflared/config.yml
+   - Tunnel ID: 0bf9e4fa-f650-498c-bd23-def05abe5aaf
 
 ### Emergency Commands
 
@@ -379,12 +502,246 @@ ssh root@72.61.166.168 "docker system prune -a --volumes -f"
 ssh root@72.61.166.168 "cd /opt/qfieldcloud && docker compose up -d worker_wrapper"
 ```
 
+## Worker Scaling & Capacity Planning
+
+### Scaling Workers
+
+**Worker Configuration** (in `.env`):
+```bash
+QFIELDCLOUD_WORKER_REPLICAS=4  # Default: 2
+```
+
+**Important**: Don't use `deploy.replicas` in docker-compose.override.yml - it conflicts with the environment variable.
+
+**Scaling Process**:
+```bash
+# 1. Backup .env
+cp .env .env.backup_$(date +%Y%m%d)
+
+# 2. Update worker count
+sed -i 's/QFIELDCLOUD_WORKER_REPLICAS=2/QFIELDCLOUD_WORKER_REPLICAS=4/' .env
+
+# 3. Restart services
+docker compose down
+docker compose up -d
+
+# 4. Verify
+docker ps --filter 'name=worker_wrapper' | wc -l  # Should match REPLICAS
+```
+
+**Resource Requirements per Worker**:
+- CPU: <1% when idle, 20-40% when processing
+- Memory: ~100-120 MB
+- Disk I/O: Minimal unless processing large files
+
+**Capacity Guidelines**:
+```
+2 workers  = 8-10 agents (light usage)
+4 workers  = 15-20 agents (moderate usage)
+6 workers  = 25-30 agents (heavy usage)
+8+ workers = 30+ agents (requires multi-server architecture)
+```
+
+**Hardware Limits**:
+- CPU: Each worker can use ~0.4 cores during processing
+- Memory: Monitor total RAM (workers + app + db)
+- 2-core VPS: Max 4-5 workers recommended
+- 4-core VPS: Max 8-10 workers recommended
+
+### Performance Monitoring
+
+**Queue Monitoring Script** (`scripts/queue_monitor.sh`):
+```bash
+#!/bin/bash
+# Runs every 5 minutes via cron
+# Logs: /var/log/qfieldcloud/queue_metrics.log (CSV format)
+
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+QUEUE=$(docker exec qfieldcloud-db-1 psql -U qfieldcloud_db_admin -d qfieldcloud_db -t -c \
+  "SELECT COUNT(*) FROM core_job WHERE status IN ('pending', 'queued');")
+PROCESSING=$(docker exec qfieldcloud-db-1 psql -U qfieldcloud_db_admin -d qfieldcloud_db -t -c \
+  "SELECT COUNT(*) FROM core_job WHERE status = 'started';")
+FAILED=$(docker exec qfieldcloud-db-1 psql -U qfieldcloud_db_admin -d qfieldcloud_db -t -c \
+  "SELECT COUNT(*) FROM core_job WHERE status = 'failed' AND created_at > NOW() - INTERVAL '1 hour';")
+
+echo "$TIMESTAMP,$QUEUE,$PROCESSING,$FAILED" >> /var/log/qfieldcloud/queue_metrics.log
+```
+
+**Install monitoring**:
+```bash
+# Create monitoring directory
+mkdir -p /opt/qfieldcloud/monitoring /var/log/qfieldcloud
+
+# Install cron job
+echo "*/5 * * * * /opt/qfieldcloud/monitoring/queue_monitor.sh" | crontab -
+```
+
+**Key Metrics to Track**:
+- **Queue depth**: Pending + queued jobs (good: <5, warning: 5-10, bad: >10)
+- **Processing count**: Active workers (should be 1-4 with 4 workers)
+- **Success rate**: finished / (finished + failed) (target: >90%)
+- **Job duration**: Time from created_at to finished_at (target: <2 min avg)
+
+### Database Schema Reference
+
+**Job Table**: `core_job` (not `qfieldcloud_job`)
+**Database User**: `qfieldcloud_db_admin` (not `qfieldcloud`)
+**Database Name**: `qfieldcloud_db`
+
+**Job Statuses**:
+- `pending`: Job created, waiting to be queued
+- `queued`: Job in queue, waiting for worker
+- `started`: Worker actively processing job
+- `finished`: Job completed successfully
+- `failed`: Job failed (error or timeout)
+
+**Useful Queries**:
+```sql
+-- Current queue depth
+SELECT status, COUNT(*) FROM core_job
+WHERE status IN ('pending', 'queued')
+GROUP BY status;
+
+-- Success rate (last 24 hours)
+SELECT
+  status,
+  COUNT(*) as count,
+  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 1) as pct
+FROM core_job
+WHERE created_at > NOW() - INTERVAL '24 hours'
+GROUP BY status;
+
+-- Average job duration
+SELECT
+  ROUND(AVG(EXTRACT(EPOCH FROM (finished_at - started_at)))) as avg_seconds
+FROM core_job
+WHERE status = 'finished'
+  AND finished_at > NOW() - INTERVAL '24 hours';
+
+-- Stuck jobs (>24 hours old)
+SELECT id, type, status, created_at
+FROM core_job
+WHERE status IN ('pending', 'queued')
+  AND created_at < NOW() - INTERVAL '24 hours';
+```
+
+### Queue Management
+
+**Clean Up Stuck Jobs**:
+```bash
+# Mark stuck jobs as failed (preserves history)
+docker exec qfieldcloud-db-1 psql -U qfieldcloud_db_admin -d qfieldcloud_db -c \
+  "UPDATE core_job
+   SET status = 'failed',
+       finished_at = NOW(),
+       output = 'Auto-cleanup: stuck >24 hours'
+   WHERE status IN ('pending', 'queued')
+     AND created_at < NOW() - INTERVAL '24 hours';"
+```
+
+**When to Clean Up**:
+- Jobs stuck >24 hours (safe)
+- Jobs stuck >48 hours (recommended)
+- After system restart (check for orphaned jobs)
+- After worker scaling (verify old jobs process)
+
+**Why Jobs Get Stuck**:
+1. Worker was down when job created
+2. Project deleted/modified after job created
+3. System restart interrupted processing
+4. Database migration changed schema
+5. Missing dependencies (files, permissions)
+
+**Prevention**:
+- Monitor worker health (systemd service or prevention daemon)
+- Regular cleanup cron job (weekly recommended)
+- Alert on queue depth >10 for >30 minutes
+- Track job age in monitoring
+
+### Capacity Planning Decision Matrix
+
+**After 1-2 weeks of monitoring, evaluate**:
+
+**Scenario A: Queue <5, Success >90%** ✅
+```
+Action: STOP - Current configuration is optimal
+Capacity: Supports target agent count comfortably
+Next: Continue monitoring, no changes needed
+```
+
+**Scenario B: Queue 5-10, Success >80%** ⚠️
+```
+Action: Consider database indexes or priority queue
+Capacity: Approaching limits, optimization beneficial
+Next: See /home/louisdup/VF/Apps/QFieldCloud/MODIFICATION_SAFETY_GUIDE.md
+```
+
+**Scenario C: Queue >10, Success <80%** ❌
+```
+Action: Investigate root cause (workers, DB, storage, code)
+Capacity: Insufficient - need optimization or more workers
+Next: Check worker logs, DB performance, storage I/O
+```
+
+**Scenario D: Queue always 0, Workers idle** 😴
+```
+Action: Over-provisioned - can scale down
+Capacity: More capacity than needed (saves resources)
+Next: Reduce QFIELDCLOUD_WORKER_REPLICAS by 1-2
+```
+
+### Benchmarking Methodology
+
+**Week 1-2: Collect Baseline Data**
+```bash
+# Review metrics
+tail -100 /var/log/qfieldcloud/queue_metrics.log
+
+# Calculate averages
+awk -F',' '{sum+=$2; count++} END {print "Avg queue:", sum/count}' \
+  /var/log/qfieldcloud/queue_metrics.log
+
+# Find peaks
+awk -F',' '{if($2>max) max=$2} END {print "Peak queue:", max}' \
+  /var/log/qfieldcloud/queue_metrics.log
+```
+
+**Week 3: Make Decision**
+- Review collected data
+- Compare against success criteria
+- Decide: STOP or Phase 2 (indexes/priority queue)
+- Document findings
+
+**Key Success Indicators**:
+- Queue depth avg <5 (good headroom)
+- Queue depth peak <10 (no saturation)
+- Success rate >90% (reliable processing)
+- Job duration <2 min (fast turnaround)
+- No sustained high queue (>10 for >30 min)
+
 ## Notes
 
 - Always backup database before major updates
 - Monitor disk space on VPS (Docker images can be large) - **automated via cron**
-- Regular certificate renewal for Let's Encrypt
+- SSL certificates now handled by Cloudflare Tunnel (no local Let's Encrypt)
 - Keep docker-compose.yml in sync with upstream
 - Monitor worker queue for stuck jobs - **automated via prevention system**
 - Check storage quotas regularly
 - Prevention system provides self-healing for common issues
+- **Worker scaling**: Configuration-only change (zero risk, 2× capacity gain)
+- **Queue monitoring**: Cron-based metrics collection every 5 minutes
+- **Stuck jobs**: Clean up weekly, mark as failed (preserves history)
+
+## Migration History
+
+### 2026-01-08: Hostinger → VF Server
+**Status**: ✅ COMPLETE (see `MIGRATION_COMPLETE.md`)
+
+- **From**: srv1083126.hstgr.cloud (72.61.166.168) - 4 workers, 8GB RAM
+- **To**: VF Server (100.96.203.105:8082) - 8 workers, 32GB+ RAM
+- **Reason**: Resource constraints, upload flooding, no battery backup
+- **Benefits**: 2x worker capacity, load shedding protection, cost savings
+- **Post-Migration Fixes** (2026-01-10):
+  - CSRF protection configuration
+  - QGIS Docker image rebuild
+  - All services validated and operational
