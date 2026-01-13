@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Write(**)",
+      "Edit(**)",
+      "Bash(pytest:*)",
+      "Bash(curl localhost:*/health)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(npm test)",
+      "Bash(npm run build)"
+    ],
+    "deny": [
+      "Bash(*rm -rf*)",
+      "Bash(*DROP TABLE*)"
+    ]
+  },
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/project"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_TOKEN": "YOUR_GITHUB_TOKEN_HERE"
+      }
+    }
+  }
+}
